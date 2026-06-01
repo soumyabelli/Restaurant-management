@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import food2Image from '../assets/food2.png'
 import '../styles/login.css'
-
+import axios from 'axios'
 const featureList = [
   {
     icon: 'FD',
@@ -40,7 +40,62 @@ const roles = [
 ]
 
 function LoginPage() {
+  const navigate = useNavigate()
+
   const [selectedRole, setSelectedRole] = useState('customer')
+  const [email, setEmail] = useState('')
+const [password, setPassword] = useState('')
+const [loading, setLoading] = useState(false)
+
+  const handleLogin = async () => {
+  try {
+    setLoading(true)
+
+    const response = await axios.post(
+      'http://localhost:5000/api/auth/login',
+      {
+        email,
+        password,
+        role: selectedRole,
+      }
+    )
+
+    const user = response.data.user
+
+    localStorage.setItem(
+      'token',
+      response.data.token
+    )
+
+    localStorage.setItem(
+      'user',
+      JSON.stringify(user)
+    )
+
+    if (user.role === 'customer') {
+      navigate('/customer/dashboard')
+    }
+
+    if (user.role === 'restaurant') {
+      navigate('/restaurant/dashboard')
+    }
+
+    if (user.role === 'delivery') {
+      navigate('/delivery/dashboard')
+    }
+
+    if (user.role === 'admin') {
+      navigate('/admin/dashboard')
+    }
+  } catch (error) {
+    alert(
+      error.response?.data?.message ||
+      'Login failed'
+    )
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <main
@@ -136,21 +191,29 @@ function LoginPage() {
               Email or Phone Number
             </label>
 
-            <input
-              id="email"
-              type="text"
-              placeholder="Enter your email or phone number"
-            />
+           <input
+  id="email"
+  type="text"
+  placeholder="Enter your email or phone number"
+  value={email}
+  onChange={(e) =>
+    setEmail(e.target.value)
+  }
+/>
 
             <label htmlFor="password">
               Password
             </label>
 
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-            />
+           <input
+  id="password"
+  type="password"
+  placeholder="Enter your password"
+  value={password}
+  onChange={(e) =>
+    setPassword(e.target.value)
+  }
+/>
 
             <div className="remember-row">
               <label className="check-wrap">
@@ -163,15 +226,14 @@ function LoginPage() {
               </Link>
             </div>
 
-            <button
-              type="button"
-              className="login-btn"
-            >
-              Login as{' '}
-              {selectedRole.charAt(0).toUpperCase() +
-                selectedRole.slice(1)}
-            </button>
-
+           <button
+  type="button"
+  className="login-btn"
+  onClick={handleLogin}
+>
+  {loading ? 'Logging in...' : 'Login'}
+</button>
+  
             <p className="signup-line">
               Don&apos;t have an account?{' '}
               <Link to="/register">
