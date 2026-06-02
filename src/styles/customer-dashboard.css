@@ -1866,6 +1866,9 @@
 .customer-dashboard .hero-panel {
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
   border-radius: 30px;
   padding: 22px 22px 26px;
   background:
@@ -1991,9 +1994,19 @@
 
 .customer-dashboard .hero-panel__content {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  width: 100%;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
   gap: 20px;
-  align-items: center;
+  align-items: start;
+}
+
+.customer-dashboard .hero-panel__copy {
+  min-width: 0;
+  justify-self: start;
+}
+
+.customer-dashboard .hero-panel__visual {
+  justify-self: end;
 }
 
 .customer-dashboard .hero-panel__eyebrow {

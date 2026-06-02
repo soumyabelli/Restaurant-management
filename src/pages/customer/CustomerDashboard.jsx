@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+
 import {
   AiOutlineArrowRight,
   AiOutlineBell,
@@ -29,9 +32,61 @@ import {
   MdOutlineSupportAgent,
   MdOutlineTune,
 } from "react-icons/md";
+import toast from "react-hot-toast";
+import api from "../../api/client";
+import CustomerFlowDrawer from "./CustomerFlowDrawer";
 import heroImage from "../../assets/food2.png";
 import cardFoodImage from "../../assets/food.png";
 import "../../styles/customer-dashboard.css";
+
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+const mediaLookup = {
+  food: cardFoodImage,
+  food2: heroImage,
+  hero: heroImage,
+  card: cardFoodImage,
+};
+
+const iconLookup = {
+  restaurant: AiOutlineShop,
+  order: AiOutlineShoppingCart,
+  event: MdOutlineEventNote,
+  favorite: AiOutlineHeart,
+  wallet: AiOutlineWallet,
+  notification: AiOutlineBell,
+  profile: AiOutlineUser,
+  support: MdOutlineSupportAgent,
+  payment: MdOutlinePayment,
+  accessTime: MdOutlineAccessTime,
+  location: MdOutlineLocationOn,
+  review: AiOutlineStar,
+  check: AiOutlineCheckCircle,
+  question: AiOutlineQuestionCircle,
+  settings: AiOutlineSetting,
+  tune: MdOutlineTune,
+  filter: MdOutlineFilterList,
+};
+
+const resolveIcon = (icon, iconKey) => icon || iconLookup[iconKey] || AiOutlineQuestionCircle;
+
+const resolveMedia = (value, fallback = heroImage) => {
+  if (!value) {
+    return fallback;
+  }
+
+  if (value.startsWith?.("http")) {
+    return value;
+  }
+
+  return mediaLookup[value] || fallback;
+};
+
+const formatMoney = (value = 0) => currencyFormatter.format(Number(value || 0));
 
 const sidebarItems = [
   { id: "home", label: "Home", helper: "Daily highlights", icon: AiOutlineHome },
@@ -134,6 +189,7 @@ const homeCategories = [
 
 const featuredRestaurants = [
   {
+    id: "demo-coastal-kitchen",
     image: cardFoodImage,
     imagePosition: "center center",
     name: "The Coastal Kitchen",
@@ -146,6 +202,7 @@ const featuredRestaurants = [
     tags: ["Open now", "Free delivery"],
   },
   {
+    id: "demo-pizza-palace",
     image: heroImage,
     imagePosition: "center center",
     name: "Pizza Palace",
@@ -158,6 +215,7 @@ const featuredRestaurants = [
     tags: ["Top rated", "Free delivery"],
   },
   {
+    id: "demo-sushi-world",
     image: cardFoodImage,
     imagePosition: "center top",
     name: "Sushi World",
@@ -170,6 +228,7 @@ const featuredRestaurants = [
     tags: ["Fresh prep", "Free delivery"],
   },
   {
+    id: "demo-burger-barn",
     image: heroImage,
     imagePosition: "center right",
     name: "Burger Barn",
@@ -750,11 +809,13 @@ function SectionShell({
   );
 }
 
-function MetricCard({ icon: Icon, label, value, note, tone = "sunset" }) {
+function MetricCard({ icon: Icon, iconKey, label, value, note, tone = "sunset" }) {
+  const ResolvedIcon = resolveIcon(Icon, iconKey);
+
   return (
     <article className={`metric-card tone-${tone}`}>
       <div className="metric-card__icon">
-        <Icon />
+        <ResolvedIcon />
       </div>
       <div className="metric-card__body">
         <p className="metric-card__label">{label}</p>
@@ -789,6 +850,7 @@ function MoodCard({ emoji, label, description, tone = "sunset", onClick }) {
 
 function ListCard({
   icon: Icon,
+  iconKey,
   title,
   meta,
   description,
@@ -797,10 +859,12 @@ function ListCard({
   actionLabel,
   onAction,
 }) {
+  const ResolvedIcon = resolveIcon(Icon, iconKey);
+
   return (
     <article className="list-card">
       <div className={`list-card__icon tone-${tone}`}>
-        <Icon />
+        <ResolvedIcon />
       </div>
       <div className="list-card__body">
         <div className="list-card__header">
@@ -821,16 +885,42 @@ function ListCard({
   );
 }
 
-function RestaurantCard({ restaurant, onNavigate }) {
+function RestaurantCard({
+  restaurant,
+  onSelect,
+  onToggleFavorite,
+  isFavorite = false,
+  primaryActionLabel = "View menu",
+}) {
+  const imageSource = resolveMedia(restaurant.image || restaurant.imageKey);
+
   return (
-    <article className="restaurant-card">
+    <article className="restaurant-card" role="button" tabIndex={0} onClick={() => onSelect?.(restaurant)} onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onSelect?.(restaurant);
+      }
+    }}>
       <div className="restaurant-card__media">
-        <img src={restaurant.image} alt="" className="restaurant-card__image" style={{ objectPosition: restaurant.imagePosition }} />
+        <img src={imageSource} alt="" className="restaurant-card__image" style={{ objectPosition: restaurant.imagePosition }} />
         <span className="restaurant-card__media-chip restaurant-card__media-chip--left">{restaurant.time}</span>
         <span className="restaurant-card__media-chip restaurant-card__media-chip--right">
           <AiOutlineStar />
           {restaurant.rating}
         </span>
+        {onToggleFavorite ? (
+          <button
+            type="button"
+            className={`restaurant-card__favorite ${isFavorite ? "is-active" : ""}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFavorite(restaurant);
+            }}
+            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <AiOutlineHeart />
+          </button>
+        ) : null}
       </div>
       <div className="restaurant-card__body">
         <div className="restaurant-card__title-row">
@@ -856,11 +946,52 @@ function RestaurantCard({ restaurant, onNavigate }) {
             </span>
           ))}
         </div>
-        {restaurant.actionLabel ? (
-          <button type="button" className="link-button" onClick={() => onNavigate(restaurant.actionTarget)}>
-            {restaurant.actionLabel}
+        <div className="restaurant-card__actions">
+          <button type="button" className="link-button" onClick={(event) => {
+            event.stopPropagation();
+            onSelect?.(restaurant);
+          }}>
+            {restaurant.actionLabel || primaryActionLabel}
           </button>
-        ) : null}
+          {onToggleFavorite ? (
+            <button
+              type="button"
+              className={`link-button link-button--secondary ${isFavorite ? "is-active" : ""}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleFavorite(restaurant);
+              }}
+            >
+              {isFavorite ? "Saved" : "Favorite"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function EventCard({ event, onSelect }) {
+  const imageSource = resolveMedia(event.image || event.imageKey);
+
+  return (
+    <article className={`event-card tone-${event.tone}`}>
+      <div className="event-card__poster">
+        <img src={imageSource} alt="" className="event-card__poster-image" />
+        <div className="event-card__poster-glow" />
+        <span className="event-card__poster-tag">{event.category || "LIVE"}</span>
+        <span className="event-card__poster-title">{event.title.split(" ").slice(0, 2).join(" ")}</span>
+      </div>
+      <div className="event-card__body">
+        <h3>{event.title}</h3>
+        <p className="event-card__meta">{event.meta || `${event.date} • ${event.time}`}</p>
+        <p className="event-card__location">{event.location || event.venue}</p>
+        <div className="event-card__footer">
+          <strong>{event.price}</strong>
+          <button type="button" className="event-card__button" onClick={() => onSelect?.(event)}>
+            {event.actionLabel || "Book Now"}
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -905,32 +1036,14 @@ function SidebarButton({ item, active, onClick }) {
   );
 }
 
-function EventCard({ event, onNavigate }) {
+function OrderRow({ order, onClick }) {
   return (
-    <article className={`event-card tone-${event.tone}`}>
-      <div className="event-card__poster">
-        <div className="event-card__poster-glow" />
-        <span className="event-card__poster-tag">LIVE</span>
-        <span className="event-card__poster-title">{event.title.split(" ").slice(0, 2).join(" ")}</span>
-      </div>
-      <div className="event-card__body">
-        <h3>{event.title}</h3>
-        <p className="event-card__meta">{event.meta}</p>
-        <p className="event-card__location">{event.location}</p>
-        <div className="event-card__footer">
-          <strong>{event.price}</strong>
-          <button type="button" className="event-card__button" onClick={() => onNavigate("events")}>
-            {event.actionLabel}
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function OrderRow({ order }) {
-  return (
-    <article className="order-row">
+    <article className="order-row" role="button" tabIndex={0} onClick={() => onClick?.(order)} onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onClick?.(order);
+      }
+    }}>
       <div className="order-row__avatar">{order.logo}</div>
       <div className="order-row__body">
         <div className="order-row__top">
@@ -964,7 +1077,22 @@ function FeatureCard({ icon: Icon, title, description, tone = "sunset" }) {
   );
 }
 
-function HomeSection({ onNavigate, userName, userInitial, rewardPoints }) {
+function HomeSection({
+  onNavigate,
+  userName,
+  userInitial,
+  rewardPoints,
+  dashboardData,
+  onOpenFlow,
+  onToggleFavorite,
+}) {
+  const restaurants = dashboardData?.restaurants?.length
+    ? dashboardData.restaurants
+    : featuredRestaurants;
+  const events = dashboardData?.events?.length ? dashboardData.events : homeEvents;
+  const orders = dashboardData?.orders?.length ? dashboardData.orders : recentOrders;
+  const favorites = dashboardData?.favorites || [];
+
   return (
     <div className="dashboard-stack home-stack">
       <section className="hero-panel">
@@ -1063,8 +1191,18 @@ function HomeSection({ onNavigate, userName, userInitial, rewardPoints }) {
         onAction={() => onNavigate("restaurants")}
       >
         <div className="restaurant-grid">
-          {featuredRestaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.name} restaurant={restaurant} onNavigate={onNavigate} />
+          {restaurants.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant.id || restaurant.name}
+              restaurant={restaurant}
+              onSelect={(item) => onOpenFlow("restaurant", item)}
+              onToggleFavorite={
+                dashboardData?.favorites?.length ? onToggleFavorite : undefined
+              }
+              isFavorite={favorites.some(
+                (favorite) => favorite.restaurantId === restaurant.id
+              )}
+            />
           ))}
         </div>
       </SectionShell>
@@ -1092,8 +1230,12 @@ function HomeSection({ onNavigate, userName, userInitial, rewardPoints }) {
           onAction={() => onNavigate("events")}
         >
           <div className="event-list">
-            {homeEvents.map((event) => (
-              <EventCard key={event.title} event={event} onNavigate={onNavigate} />
+            {events.map((event) => (
+              <EventCard
+                key={event.id || event.title}
+                event={event}
+                onSelect={(item) => onOpenFlow("event", item)}
+              />
             ))}
           </div>
         </SectionShell>
@@ -1108,8 +1250,8 @@ function HomeSection({ onNavigate, userName, userInitial, rewardPoints }) {
           onAction={() => onNavigate("orders")}
         >
           <div className="order-list">
-            {recentOrders.map((order) => (
-              <OrderRow key={order.id} order={order} />
+            {orders.map((order) => (
+              <OrderRow key={order.id} order={order} onClick={(item) => onOpenFlow("order", item)} />
             ))}
           </div>
           <button type="button" className="order-list__footer-link" onClick={() => onNavigate("orders")}>
@@ -1126,18 +1268,24 @@ function HomeSection({ onNavigate, userName, userInitial, rewardPoints }) {
         >
           <div className="tracking-card">
             <div className="tracking-card__header">
-              <span className="tracking-card__id">Order ID: #FHB83291</span>
-              <span className="status-chip status-chip--blue">In Transit</span>
+              <span className="tracking-card__id">
+                Order ID: {dashboardData?.activeOrder?.orderCode || "#FHB83291"}
+              </span>
+              <span className="status-chip status-chip--blue">
+                {dashboardData?.activeOrder?.status || "In Transit"}
+              </span>
             </div>
             <div className="tracking-card__restaurant">
-              <div className="tracking-card__mini-logo">🍔</div>
+              <div className="tracking-card__mini-logo">
+                {dashboardData?.activeOrder?.restaurantEmoji || "🍔"}
+              </div>
               <div>
-                <strong>Burger Barn</strong>
-                <span>1 x Classic Burger, 1 x Fries</span>
+                <strong>{dashboardData?.activeOrder?.restaurant || "Burger Barn"}</strong>
+                <span>{dashboardData?.activeOrder?.items || "1 x Classic Burger, 1 x Fries"}</span>
               </div>
             </div>
             <div className="timeline">
-              {orderTimeline.map((step) => (
+              {(dashboardData?.activeOrder?.timeline || orderTimeline).map((step) => (
                 <div key={step.label} className={`timeline-step is-${step.state}`}>
                   <span className="timeline-step__dot">
                     {step.state === "done" ? <AiOutlineCheckCircle /> : <AiOutlineClockCircle />}
@@ -1187,7 +1335,12 @@ function HomeSection({ onNavigate, userName, userInitial, rewardPoints }) {
   );
 }
 
-function RestaurantsSection({ onNavigate }) {
+function RestaurantsSection({ onNavigate, dashboardData, onOpenFlow, onToggleFavorite }) {
+  const restaurants = dashboardData?.restaurants?.length
+    ? dashboardData.restaurants
+    : featuredRestaurants;
+  const favorites = dashboardData?.favorites || [];
+
   return (
     <div className="dashboard-stack">
       <SectionShell
@@ -1205,8 +1358,14 @@ function RestaurantsSection({ onNavigate }) {
           ))}
         </div>
         <div className="restaurant-grid">
-          {featuredRestaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.name} restaurant={restaurant} onNavigate={onNavigate} />
+          {restaurants.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant.id || restaurant.name}
+              restaurant={restaurant}
+              onSelect={(item) => onOpenFlow("restaurant", item)}
+              onToggleFavorite={onToggleFavorite}
+              isFavorite={favorites.some((favorite) => favorite.restaurantId === restaurant.id)}
+            />
           ))}
         </div>
       </SectionShell>
@@ -1264,7 +1423,12 @@ function RestaurantsSection({ onNavigate }) {
   );
 }
 
-function DineOutSection() {
+function DineOutSection({ dashboardData, onOpenFlow, onToggleFavorite }) {
+  const restaurants = dashboardData?.restaurants?.length
+    ? dashboardData.restaurants
+    : featuredRestaurants;
+  const favorites = dashboardData?.favorites || [];
+
   return (
     <div className="dashboard-stack">
       <SectionShell
@@ -1273,15 +1437,17 @@ function DineOutSection() {
         subtitle="Table options and ambience focused spots for your next reservation."
       >
         <div className="restaurant-grid">
-          {dineOutCards.map((card) => (
-            <ListCard
-              key={card.title}
-              icon={card.icon}
-              title={card.title}
-              meta={card.meta}
-              description={card.description}
-              tone={card.tone}
-              badge="Available"
+          {restaurants.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant.id || restaurant.name}
+              restaurant={{
+                ...restaurant,
+                actionLabel: "Reserve table",
+              }}
+              primaryActionLabel="Reserve table"
+              onSelect={(item) => onOpenFlow("reservation", item)}
+              onToggleFavorite={onToggleFavorite}
+              isFavorite={favorites.some((favorite) => favorite.restaurantId === restaurant.id)}
             />
           ))}
         </div>
@@ -1337,81 +1503,52 @@ function DineOutSection() {
   );
 }
 
-function EventsSection() {
+function EventsSection({ dashboardData, onOpenFlow }) {
+  const events = dashboardData?.events?.length ? dashboardData.events : homeEvents;
+  const restaurants = dashboardData?.restaurants?.length
+    ? dashboardData.restaurants
+    : featuredRestaurants;
+  const planEventOptions = restaurants.map((restaurant, index) => {
+    const sourceEvent = events[index % Math.max(events.length, 1)] || {};
+    return {
+      ...sourceEvent,
+      id: sourceEvent.id,
+      title: restaurant.name,
+      location: restaurant.location || restaurant.distance,
+      venue: restaurant.location || restaurant.distance,
+      category: "Restaurant",
+      meta: `${restaurant.cuisine || ""} • ${restaurant.time || ""}`,
+      price: "Plan event",
+      actionLabel: "Plan Event",
+    };
+  });
+
   return (
     <div className="dashboard-stack">
       <SectionShell
-        eyebrow="Live experiences"
-        title="Events worth attending"
-        subtitle="Curated food festivals, tasting nights and chef-led evenings."
+        eyebrow="Event planner"
+        title="Select restaurant and plan event"
+        subtitle="Choose a restaurant first, then enter event details on next page."
       >
         <div className="restaurant-grid">
-          {eventCards.map((event) => (
-            <ListCard
-              key={event.title}
-              icon={event.icon}
-              title={event.title}
-              meta={event.meta}
-              description={event.description}
-              badge={event.badge}
-              tone={event.tone}
+          {planEventOptions.map((event) => (
+            <EventCard
+              key={event.id || event.title}
+              event={event}
+              onSelect={(item) => onOpenFlow("event", item)}
             />
           ))}
         </div>
       </SectionShell>
-
-      <div className="dashboard-dual-grid">
-        <SectionShell
-          eyebrow="Schedule"
-          title="Event reminders"
-          subtitle="Stay ready for your next booking or tasting night."
-        >
-          <div className="list-stack">
-            {eventSchedule.map((item) => (
-              <ListCard
-                key={item.title}
-                icon={item.icon}
-                title={item.title}
-                meta={item.meta}
-                description={item.description}
-                tone={item.tone}
-              />
-            ))}
-          </div>
-        </SectionShell>
-
-        <SectionShell
-          eyebrow="Quick idea"
-          title="Best event types"
-          subtitle="A simple shortlist of experiences that feel easy to join."
-        >
-          <div className="list-stack">
-            <ListCard
-              icon={MdOutlineEventNote}
-              title="Tasting nights"
-              meta="Ideal for date nights and friends"
-              tone="sunset"
-            />
-            <ListCard
-              icon={MdOutlineEventNote}
-              title="Street food festivals"
-              meta="Best for variety and casual visits"
-              tone="amber"
-            />
-            <ListCard
-              icon={MdOutlineEventNote}
-              title="Chef's table"
-              meta="Premium experience with limited seats"
-              tone="sky"
-            />
-          </div>
-        </SectionShell>
-      </div>
     </div>
   );
 }
 
-function OrdersSection({ onNavigate }) {
+function OrdersSection({ onNavigate, dashboardData, onOpenFlow }) {
+  const orders = dashboardData?.orders?.length ? dashboardData.orders : recentOrders;
+  const activeOrder = dashboardData?.activeOrder || orders[0] || null;
+  const timeline = activeOrder?.timeline?.length ? activeOrder.timeline : orderTimeline;
+
   return (
     <div className="dashboard-stack">
       <div className="dashboard-dual-grid">
@@ -1424,11 +1561,13 @@ function OrdersSection({ onNavigate }) {
         >
           <div className="tracking-card">
             <div className="tracking-card__header">
-              <span className="tracking-card__id">Order ID: #FHB32291</span>
-              <span className="status-chip">On the way</span>
+              <span className="tracking-card__id">
+                Order ID: {activeOrder?.orderCode || "#FHB32291"}
+              </span>
+              <span className="status-chip">{activeOrder?.status || "On the way"}</span>
             </div>
             <div className="timeline">
-              {orderTimeline.map((step) => (
+              {timeline.map((step) => (
                 <div key={step.label} className={`timeline-step is-${step.state}`}>
                   <span className="timeline-step__dot">
                     {step.state === "done" ? <AiOutlineCheckCircle /> : <AiOutlineClockCircle />}
@@ -1441,15 +1580,23 @@ function OrdersSection({ onNavigate }) {
             <div className="tracking-card__details">
               <div className="tracking-card__row">
                 <span className="tracking-card__label">Restaurant</span>
-                <strong>Burger Barn</strong>
+                <strong>{activeOrder?.restaurant || "Burger Barn"}</strong>
               </div>
               <div className="tracking-card__row">
-                <span className="tracking-card__label">Delivery partner</span>
-                <strong>Ravi Kumar</strong>
+                <span className="tracking-card__label">Items</span>
+                <strong>{activeOrder?.items || "1 x Classic Burger, 1 x Fries"}</strong>
               </div>
               <div className="tracking-card__actions">
-                <button type="button" className="outline-button">Call</button>
-                <button type="button" className="outline-button">Message</button>
+                <button
+                  type="button"
+                  className="outline-button"
+                  onClick={() => activeOrder && onOpenFlow?.("order", activeOrder)}
+                >
+                  View details
+                </button>
+                <button type="button" className="outline-button" onClick={() => onNavigate("support")}>
+                  Support
+                </button>
               </div>
             </div>
           </div>
@@ -1457,19 +1604,21 @@ function OrdersSection({ onNavigate }) {
 
         <SectionShell
           eyebrow="History"
-          title="Recent orders"
-          subtitle="Your last few meals with quick status at a glance."
+          title="All order history"
+          subtitle="See every order you've placed with status, date and amount."
         >
           <div className="list-stack">
-            {recentOrders.map((order) => (
+            {orders.map((order) => (
               <ListCard
                 key={order.id}
                 icon={order.icon}
                 title={order.restaurant}
                 meta={order.items}
-                description={`${order.time}  |  ${order.amount}`}
+                description={`${order.time || ""}  |  ${order.amount || ""}`}
                 badge={order.status}
                 tone={order.tone}
+                actionLabel="View"
+                onAction={() => onOpenFlow?.("order", order)}
               />
             ))}
           </div>
@@ -1479,7 +1628,18 @@ function OrdersSection({ onNavigate }) {
   );
 }
 
-function FavoritesSection() {
+function FavoritesSection({ dashboardData, onOpenFlow }) {
+  const favorites = dashboardData?.favorites?.length ? dashboardData.favorites : favoritesRestaurants;
+  const favoriteOrderHints = (dashboardData?.orders || [])
+    .slice(0, 6)
+    .map((order) => ({
+      title: order.restaurant,
+      meta: order.items,
+      description: `${order.time || ""} • ${order.amount || ""}`,
+      badge: "Previously ordered",
+      tone: order.tone || "mint",
+    }));
+
   return (
     <div className="dashboard-stack">
       <div className="dashboard-dual-grid">
@@ -1489,15 +1649,17 @@ function FavoritesSection() {
           subtitle="Your most ordered and most loved places."
         >
           <div className="list-stack">
-            {favoritesRestaurants.map((restaurant) => (
+            {favorites.map((restaurant) => (
               <ListCard
-                key={restaurant.title}
-                icon={restaurant.icon}
-                title={restaurant.title}
-                meta={restaurant.meta}
-                description={restaurant.description}
-                badge={restaurant.badge}
-                tone={restaurant.tone}
+                key={restaurant.id || restaurant.title || restaurant.name}
+                icon={restaurant.icon || AiOutlineHeart}
+                title={restaurant.title || restaurant.name}
+                meta={restaurant.meta || restaurant.cuisine}
+                description={restaurant.description || `${restaurant.distance || ""} • ${restaurant.eta || ""}`}
+                badge={restaurant.badge || "Saved"}
+                tone={restaurant.tone || "mint"}
+                actionLabel="View menu"
+                onAction={() => onOpenFlow?.("restaurant", restaurant)}
               />
             ))}
           </div>
@@ -1509,15 +1671,15 @@ function FavoritesSection() {
           subtitle="A quick reminder of the meals you keep coming back for."
         >
           <div className="list-stack">
-            {favoriteDishes.map((dish) => (
+            {(favoriteOrderHints.length ? favoriteOrderHints : favoriteDishes).map((dish) => (
               <ListCard
-                key={dish.title}
-                icon={dish.icon}
+                key={`${dish.title}-${dish.meta}`}
+                icon={dish.icon || AiOutlineStar}
                 title={dish.title}
                 meta={dish.meta}
                 description={dish.description}
-                badge={dish.badge}
-                tone={dish.tone}
+                badge={dish.badge || "Top repeat"}
+                tone={dish.tone || "sunset"}
               />
             ))}
           </div>
@@ -1684,79 +1846,127 @@ function NotificationsSection({ onNavigate }) {
   );
 }
 
-function ProfileSection() {
+function ProfileSection({ dashboardData, onProfileUpdated }) {
+  const profileUser = dashboardData?.user || {};
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    avatarUrl: "",
+    defaultAddress: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm({
+      name: profileUser?.name || "",
+      email: profileUser?.email || "",
+      phone: profileUser?.phone || "",
+      avatarUrl: profileUser?.avatarUrl || "",
+      defaultAddress: profileUser?.savedAddresses?.[0]?.line1 || "",
+    });
+  }, [profileUser]);
+
+  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+      await api.put("/customer/profile", {
+        name: form.name,
+        phone: form.phone,
+        avatarUrl: form.avatarUrl,
+        savedAddresses: form.defaultAddress
+          ? [
+              {
+                label: "Home",
+                line1: form.defaultAddress,
+                city: profileUser?.savedAddresses?.[0]?.city || "",
+                state: profileUser?.savedAddresses?.[0]?.state || "",
+                pincode: profileUser?.savedAddresses?.[0]?.pincode || "",
+                isDefault: true,
+              },
+            ]
+          : [],
+      });
+
+      const nextStoredUser = {
+        ...(JSON.parse(localStorage.getItem("user") || "{}")),
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        avatarUrl: form.avatarUrl,
+      };
+      localStorage.setItem("user", JSON.stringify(nextStoredUser));
+
+      toast.success("Profile updated successfully");
+      await onProfileUpdated?.();
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "Unable to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="dashboard-stack">
       <SectionShell
-        eyebrow="Identity"
-        title="Profile at a glance"
-        subtitle="Your account information, location and taste preferences."
+        eyebrow="Registration details"
+        title="Your profile"
+        subtitle="View and edit the details used during registration."
       >
-        <div className="metric-grid">
-          {profileHighlights.map((item) => (
-            <MetricCard key={item.label} {...item} />
-          ))}
+        <div className="list-stack">
+          <label className="field-group">
+            <span>Name</span>
+            <input
+              value={form.name}
+              onChange={(event) => updateField("name", event.target.value)}
+              placeholder="Enter your name"
+            />
+          </label>
+          <label className="field-group">
+            <span>Email (from registration)</span>
+            <input value={form.email} readOnly />
+          </label>
+          <label className="field-group">
+            <span>Phone</span>
+            <input
+              value={form.phone}
+              onChange={(event) => updateField("phone", event.target.value)}
+              placeholder="Enter phone number"
+            />
+          </label>
+          <label className="field-group">
+            <span>Avatar URL</span>
+            <input
+              value={form.avatarUrl}
+              onChange={(event) => updateField("avatarUrl", event.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+          <label className="field-group">
+            <span>Default Address</span>
+            <textarea
+              rows={3}
+              value={form.defaultAddress}
+              onChange={(event) => updateField("defaultAddress", event.target.value)}
+              placeholder="Enter your default address"
+            />
+          </label>
+          <button
+            type="button"
+            className="sidebar-rewards__button"
+            onClick={handleSaveProfile}
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Save profile"}
+            <AiOutlineArrowRight />
+          </button>
         </div>
       </SectionShell>
-
-      <div className="dashboard-dual-grid">
-        <SectionShell
-          eyebrow="Details"
-          title="Account details"
-          subtitle="Small edits here keep the experience smoother later."
-        >
-          <div className="list-stack">
-            <ListCard
-              icon={AiOutlineUser}
-              title="Name"
-              meta="Deepthi"
-              description="Shown in support chats and order receipts."
-              tone="sunset"
-            />
-            <ListCard
-              icon={MdOutlineLocationOn}
-              title="Saved address"
-              meta="43 Park Street"
-              description="Default address for most deliveries."
-              tone="mint"
-            />
-            <ListCard
-              icon={MdOutlineRestaurantMenu}
-              title="Dining filters"
-              meta="No onion, extra spicy"
-              description="Saved preferences for quick checkout."
-              tone="sky"
-            />
-          </div>
-        </SectionShell>
-
-        <SectionShell
-          eyebrow="Membership"
-          title="Account perks"
-          subtitle="Premium touches and order habits that are already set."
-        >
-          <div className="list-stack">
-            <ListCard
-              icon={AiOutlineStar}
-              title="Foodie Plus"
-              meta="Priority support and special delivery offers"
-              tone="sunset"
-            />
-            <ListCard
-              icon={AiOutlineHeart}
-              title="Saved favorites"
-              meta="Restaurants and dishes can be reordered faster"
-              tone="mint"
-            />
-            <ListCard
-              icon={AiOutlineWallet}
-              title="Wallet shortcuts"
-              meta="Quick checkout and cashback reminders"
-              tone="sky"
-            />
-          </div>
-        </SectionShell>
-      </div>
     </div>
   );
 }
@@ -1918,6 +2128,148 @@ function SettingsSection() {
 }
 
 function CustomerDashboard() {
+  const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [activeFlow, setActiveFlow] = useState(null);
+  const [flowSaving, setFlowSaving] = useState(false);
+
+  const handleOpenFlow = useCallback(
+    (type, item) => {
+      if (type === "restaurant") {
+        const restaurantId = item?.id;
+        if (!restaurantId) {
+          toast.error("Restaurant id not found");
+          return;
+        }
+        navigate(`/restaurant/${restaurantId}/menu`);
+        return;
+      }
+
+      if (type === "reservation") {
+        const restaurantId = item?.id;
+        if (!restaurantId) {
+          toast.error("Restaurant id not found");
+          return;
+        }
+        navigate(`/restaurant/${restaurantId}/reserve`);
+        return;
+      }
+
+      if (type === "event" || type === "order") {
+        if (type === "event") {
+          const eventId = item?.id;
+          if (!eventId) {
+            toast.error("Event id not found");
+            return;
+          }
+          navigate(`/events/${eventId}/book`);
+          return;
+        }
+        setActiveFlow({ type, payload: item });
+        return;
+      }
+    },
+    [navigate]
+  );
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      const response = await api.get("/customer/dashboard");
+      if (response.data?.success) {
+        setDashboardData(response.data.data || null);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  const handleToggleFavorite = useCallback(
+    async (restaurant) => {
+      const restaurantId = restaurant?.id;
+      if (!restaurantId) {
+        toast.error("Restaurant id not found");
+        return;
+      }
+
+      try {
+        const response = await api.post("/customer/favorites/toggle", { restaurantId });
+        if (response.data?.success) {
+          toast.success(
+            response.data?.action === "added"
+              ? "Added to favorites"
+              : "Removed from favorites"
+          );
+          await loadDashboard();
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.response?.data?.message || "Unable to update favorite");
+      }
+    },
+    [loadDashboard]
+  );
+
+  const handleCloseFlow = useCallback(() => {
+    if (flowSaving) {
+      return;
+    }
+    setActiveFlow(null);
+  }, [flowSaving]);
+
+  const handleFlowSubmit = useCallback(
+    async (payload) => {
+      try {
+        setFlowSaving(true);
+
+        if (payload.type === "reservation") {
+          await api.post("/customer/reservations", {
+            restaurantId: payload.restaurantId,
+            tableSize: payload.tableSize,
+            guests: payload.guests,
+            date: payload.date,
+            time: payload.time,
+            notes: payload.notes || "",
+          });
+          toast.success("Table reservation confirmed");
+          setActiveSection("dineout");
+        } else if (payload.type === "event") {
+          await api.post("/customer/events/book", {
+            eventId: payload.eventId,
+            quantity: payload.quantity,
+            paymentMethod: payload.paymentMethod,
+            date: payload.date,
+            time: payload.time,
+          });
+          toast.success("Event booking confirmed");
+          setActiveSection("events");
+        } else if (payload.type === "restaurant") {
+          await api.post("/customer/orders", {
+            restaurantId: payload.restaurantId,
+            items: payload.items,
+            paymentMethod: payload.paymentMethod,
+            address: payload.address || "",
+            notes: payload.notes || "",
+          });
+          toast.success("Order placed successfully");
+          setActiveSection("orders");
+        }
+
+        setActiveFlow(null);
+        await loadDashboard();
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.response?.data?.message || "Unable to complete request");
+      } finally {
+        setFlowSaving(false);
+      }
+    },
+    [loadDashboard]
+  );
+
+  const handleProfileUpdated = useCallback(async () => {
+    await loadDashboard();
+  }, [loadDashboard]);
+
   const [user] = useState(() => {
     const storedUser = localStorage.getItem("user");
 
@@ -1937,6 +2289,10 @@ function CustomerDashboard() {
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [activeSection]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const section = sectionMeta[activeSection] ?? sectionMeta.home;
   const SectionComponent =
@@ -2032,11 +2388,28 @@ function CustomerDashboard() {
             userName={userName}
             userInitial={userInitial}
             rewardPoints={rewardPoints}
+            dashboardData={dashboardData}
+            onOpenFlow={handleOpenFlow}
+            onToggleFavorite={handleToggleFavorite}
+            onProfileUpdated={handleProfileUpdated}
           />
+
         </div>
       </main>
+
+      <CustomerFlowDrawer
+        flow={activeFlow}
+        user={dashboardData?.user || user}
+        restaurants={dashboardData?.restaurants || []}
+        onClose={handleCloseFlow}
+        onSubmit={handleFlowSubmit}
+        saving={flowSaving}
+        onOpenFlow={handleOpenFlow}
+      />
     </div>
   );
 }
 
 export default CustomerDashboard;
+
+
