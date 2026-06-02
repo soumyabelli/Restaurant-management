@@ -2,12 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import { AiOutlineCheckCircle, AiOutlineClockCircle } from "react-icons/ai";
 import heroImage from "../../assets/food2.png";
 import cardFoodImage from "../../assets/food.png";
+import rest1 from "../../assets/rest1.jfif";
+import rest2 from "../../assets/rest2.jfif";
+import rest3 from "../../assets/res3.jfif";
+import rest4 from "../../assets/rest4.jfif";
+import rest5 from "../../assets/rest5.jfif";
+import rest6 from "../../assets/rest6.jfif";
 
 const mediaLookup = {
-  food: cardFoodImage,
-  food2: heroImage,
-  hero: heroImage,
-  card: cardFoodImage,
+  food: rest1,
+  food2: rest2,
+  hero: rest3,
+  card: rest4,
+  rest1,
+  rest2,
+  rest3,
+  rest4,
+  rest5,
+  rest6
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
@@ -60,10 +72,10 @@ function CustomerFlowDrawer({
       user?.savedPaymentMethods?.length
         ? user.savedPaymentMethods
         : [
-            { label: "UPI", type: "upi", provider: "PhonePe / GPay" },
-            { label: "Wallet", type: "wallet", provider: "FoodieHub Wallet" },
-            { label: "Cash", type: "cash", provider: "Pay on delivery" },
-          ],
+          { label: "UPI", type: "upi", provider: "PhonePe / GPay" },
+          { label: "Wallet", type: "wallet", provider: "FoodieHub Wallet" },
+          { label: "Cash", type: "cash", provider: "Pay on delivery" },
+        ],
     [user]
   );
 
@@ -152,9 +164,8 @@ function CustomerFlowDrawer({
           <div className="customer-flow-modal__detail-grid">
             <div className="customer-flow-modal__summary">
               <span
-                className={`status-chip status-chip--${
-                  order.status === "Delivered" ? "success" : "blue"
-                }`}
+                className={`status-chip status-chip--${order.status === "Delivered" ? "success" : "blue"
+                  }`}
               >
                 {order.status}
               </span>

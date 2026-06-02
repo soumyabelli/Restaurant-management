@@ -37,6 +37,12 @@ import api from "../../api/client";
 import CustomerFlowDrawer from "./CustomerFlowDrawer";
 import heroImage from "../../assets/food2.png";
 import cardFoodImage from "../../assets/food.png";
+import rest1 from "../../assets/rest1.jfif";
+import rest2 from "../../assets/rest2.jfif";
+import rest3 from "../../assets/res3.jfif";
+import rest4 from "../../assets/rest4.jfif";
+import rest5 from "../../assets/rest5.jfif";
+import rest6 from "../../assets/rest6.jfif";
 import "../../styles/customer-dashboard.css";
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
@@ -46,10 +52,16 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
 });
 
 const mediaLookup = {
-  food: cardFoodImage,
-  food2: heroImage,
-  hero: heroImage,
-  card: cardFoodImage,
+  food: rest1,
+  food2: rest2,
+  hero: rest3,
+  card: rest4,
+  rest1,
+  rest2,
+  rest3,
+  rest4,
+  rest5,
+  rest6
 };
 
 const iconLookup = {
@@ -190,7 +202,7 @@ const homeCategories = [
 const featuredRestaurants = [
   {
     id: "demo-coastal-kitchen",
-    image: cardFoodImage,
+    image: "rest1",
     imagePosition: "center center",
     name: "The Coastal Kitchen",
     cuisine: "Seafood, Indian",
@@ -203,7 +215,7 @@ const featuredRestaurants = [
   },
   {
     id: "demo-pizza-palace",
-    image: heroImage,
+    image: "rest2",
     imagePosition: "center center",
     name: "Pizza Palace",
     cuisine: "Pizza, Italian",
@@ -216,7 +228,7 @@ const featuredRestaurants = [
   },
   {
     id: "demo-sushi-world",
-    image: cardFoodImage,
+    image: "rest3",
     imagePosition: "center top",
     name: "Sushi World",
     cuisine: "Sushi, Japanese",
@@ -229,7 +241,7 @@ const featuredRestaurants = [
   },
   {
     id: "demo-burger-barn",
-    image: heroImage,
+    image: "rest4",
     imagePosition: "center right",
     name: "Burger Barn",
     cuisine: "Burgers, American",
@@ -244,7 +256,7 @@ const featuredRestaurants = [
 
 const homeOffers = [
   {
-    image: heroImage,
+    image: "rest5",
     title: "60% OFF",
     description: "Get up to ₹120 on orders above ₹299.",
     code: "FOODIE60",
@@ -252,7 +264,7 @@ const homeOffers = [
     tone: "sunset",
   },
   {
-    image: cardFoodImage,
+    image: "rest6",
     title: "40% OFF",
     description: "Get up to ₹100 on orders above ₹249.",
     code: "YUMMY40",
@@ -260,7 +272,7 @@ const homeOffers = [
     tone: "amber",
   },
   {
-    image: heroImage,
+    image: "rest1",
     title: "Flat ₹80 OFF",
     description: "On your first order.",
     code: "WELCOME80",
@@ -1940,14 +1952,6 @@ function ProfileSection({ dashboardData, onProfileUpdated }) {
             />
           </label>
           <label className="field-group">
-            <span>Avatar URL</span>
-            <input
-              value={form.avatarUrl}
-              onChange={(event) => updateField("avatarUrl", event.target.value)}
-              placeholder="https://..."
-            />
-          </label>
-          <label className="field-group">
             <span>Default Address</span>
             <textarea
               rows={3}
@@ -1958,7 +1962,7 @@ function ProfileSection({ dashboardData, onProfileUpdated }) {
           </label>
           <button
             type="button"
-            className="sidebar-rewards__button"
+            className="profile-save-btn"
             onClick={handleSaveProfile}
             disabled={saving}
           >

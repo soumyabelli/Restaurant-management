@@ -3006,3 +3006,85 @@
     min-height: 320px;
   }
 }
+
+/* CUSTOMER PROFILE STYLING DEFINITIONS */
+.customer-dashboard .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.customer-dashboard .field-group span {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.customer-dashboard .field-group input,
+.customer-dashboard .field-group textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: var(--surface-strong, #ffffff);
+  color: var(--text, #111827);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.22s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.01);
+}
+
+.customer-dashboard .field-group input:focus,
+.customer-dashboard .field-group textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(255, 106, 61, 0.08);
+  transform: translateY(-1px);
+}
+
+.customer-dashboard .field-group input[readonly] {
+  background: rgba(17, 24, 39, 0.03);
+  color: var(--muted);
+  cursor: not-allowed;
+  border-color: rgba(17, 24, 39, 0.04);
+}
+
+.customer-dashboard .profile-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(90deg, #ff6a3d 0%, #ff8a4f 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(255, 106, 61, 0.22);
+  transition: all 0.22s ease;
+  width: auto;
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+.customer-dashboard .profile-save-btn:hover {
+  background: linear-gradient(90deg, #ff8a4f 0%, #ff6a3d 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(255, 106, 61, 0.32);
+}
+
+.customer-dashboard .profile-save-btn:disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+

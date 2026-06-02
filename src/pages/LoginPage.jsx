@@ -244,7 +244,14 @@ const [loading, setLoading] = useState(false)
             <div className="admin-login">
               <span>Administrator?</span>
 
-              <Link to="/admin/login">
+              <Link
+                to="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setEmail('admin@gmail.com');
+                  setPassword('123');
+                }}
+              >
                 Admin Login
               </Link>
             </div>
