@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/client";
 import toast from "react-hot-toast";
+import AvocadoImg from "../../assets/avacado toast.jfif";
+import ProteinImg from "../../assets/protein smoothie.jfif";
+import QuinoaImg from "../../assets/quinoa salad.jfif";
+import ColdBrewImg from "../../assets/cold brew.jfif";
+import FoodImg from "../../assets/food.png";
 
 const STORAGE_KEY = "foodiehub_cart_v1";
 
@@ -20,6 +25,8 @@ function getInitialCart() {
 
 function MenuItemRow({ item, qty, onAdd, onRemove }) {
   const isVeg = item.vegetarian ?? true;
+  const imgSrc = findImageForName(item.name);
+
   return (
     <div className={`menu-item-card ${qty > 0 ? "is-selected" : ""}`}>
       <div className="menu-item-card__head">
@@ -27,27 +34,41 @@ function MenuItemRow({ item, qty, onAdd, onRemove }) {
         {item.popular ? <span className="menu-badge">Popular</span> : null}
       </div>
 
-      <div className="menu-item-row__left">
-        <div className="menu-item-row__name">
-          <span className="menu-item-row__emoji">{item.emoji || "🍽️"}</span> {item.name}
+      <div className="menu-item-card__body">
+        <div className="menu-item-card__media">
+          <img src={imgSrc} alt={item.name} className="menu-item-image" />
         </div>
-        {item.description ? <div className="menu-item-row__desc">{item.description}</div> : null}
-        <div className="menu-item-row__price">₹{Number(item.price || 0).toFixed(0)}</div>
-      </div>
 
-      <div className="menu-item-row__right">
-        <div className="qty-controls">
-          <button type="button" onClick={onRemove} disabled={qty <= 0} aria-label={`Decrease ${item.name}`}>
-            -
-          </button>
-          <span className="qty">{qty}</span>
-          <button type="button" onClick={onAdd} aria-label={`Increase ${item.name}`}>
-            +
-          </button>
+        <div className="menu-item-card__content">
+          <div className="menu-item-row__name">{item.name}</div>
+          {item.description ? <div className="menu-item-row__desc">{item.description}</div> : null}
+          <div className="menu-item-row__price">₹{Number(item.price || 0).toFixed(0)}</div>
+        </div>
+
+        <div className="menu-item-row__right">
+          <div className="qty-controls">
+            <button type="button" onClick={onRemove} disabled={qty <= 0} aria-label={`Decrease ${item.name}`}>
+              -
+            </button>
+            <span className="qty">{qty}</span>
+            <button type="button" onClick={onAdd} aria-label={`Increase ${item.name}`}>
+              +
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function findImageForName(name) {
+  if (!name) return FoodImg;
+  const key = String(name).toLowerCase();
+  if (key.includes("avoc") || key.includes("avacad") || key.includes("avacado") || key.includes("avo")) return AvocadoImg;
+  if (key.includes("protein")) return ProteinImg;
+  if (key.includes("quinoa")) return QuinoaImg;
+  if (key.includes("cold") || key.includes("brew") || key.includes("coffee")) return ColdBrewImg;
+  return FoodImg;
 }
 
 export default function RestaurantMenuPage() {
@@ -319,6 +340,12 @@ export default function RestaurantMenuPage() {
           box-shadow:0 10px 24px rgba(37,99,235,0.18);
           background:linear-gradient(145deg,#ffffff,#f8fbff);
         }
+        .menu-item-card__body{display:flex;align-items:center;gap:12px;}
+        .menu-item-card__media{width:96px;height:96px;border-radius:12px;overflow:hidden;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,0.06);}
+        .menu-item-image{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease;}
+        .menu-item-card.is-selected .menu-item-image{transform:scale(1.03);}
+        .menu-item-card__content{flex:1;min-width:0;}
+        .menu-item-row__right{display:flex;align-items:center;margin-left:12px;}
         .menu-item-card__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
         .diet-dot{width:14px;height:14px;border-radius:99px;border:2px solid #16a34a;}
         .diet-dot.is-nonveg{border-color:#dc2626;}
