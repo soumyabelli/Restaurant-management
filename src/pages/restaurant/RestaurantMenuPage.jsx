@@ -7,6 +7,7 @@ import ProteinImg from "../../assets/protein smoothie.jfif";
 import QuinoaImg from "../../assets/quinoa salad.jfif";
 import ColdBrewImg from "../../assets/cold brew.jfif";
 import FoodImg from "../../assets/food.png";
+import { AiOutlineHeart, AiFillHeart, AiOutlineStar, AiFillStar } from "react-icons/ai";
 
 const STORAGE_KEY = "foodiehub_cart_v1";
 
@@ -23,15 +24,121 @@ function getInitialCart() {
   return safeParseJSON(raw, { restaurantId: null, items: {} });
 }
 
-function MenuItemRow({ item, qty, onAdd, onRemove }) {
+function MenuItemRow({ item, qty, onAdd, onRemove, restaurant }) {
   const isVeg = item.vegetarian ?? true;
   const imgSrc = findImageForName(item.name);
+  const navigate = useNavigate();
+
+  // Local favorites and reviews keys
+  const FAV_KEY = "foodiehub_fav_dishes_v1";
+  const REV_KEY = "foodiehub_reviews_v1";
+
+  const getSavedFavDishes = () => {
+    try {
+      return JSON.parse(localStorage.getItem(FAV_KEY)) || [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveFavDishes = (list) => {
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify(list || []));
+    } catch {}
+  };
+
+  const isDishFavorite = (id) => getSavedFavDishes().some((d) => String(d.id) === String(id));
+
+  const toggleFavoriteDish = (it) => {
+    const list = getSavedFavDishes();
+    const key = String(it.id);
+    const exists = list.some((f) => String(f.id) === key);
+    if (exists) {
+      const next = list.filter((f) => String(f.id) !== key);
+      saveFavDishes(next);
+      return "removed";
+    }
+
+    const entry = {
+      id: it.id,
+      name: it.name,
+      price: it.price,
+      restaurantId: restaurant?.id || null,
+      restaurantName: restaurant?.name || null,
+      image: imgSrc,
+    };
+    list.unshift(entry);
+    saveFavDishes(list);
+    return "added";
+  };
+
+  const getSavedReviews = () => {
+    try {
+      return JSON.parse(localStorage.getItem(REV_KEY)) || [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveReview = (itemId, rating) => {
+    const list = getSavedReviews();
+    const key = String(itemId);
+    const existingIndex = list.findIndex((r) => String(r.itemId) === key);
+    const review = {
+      itemId: itemId,
+      itemName: item.name,
+      rating,
+      restaurantId: null,
+      restaurantName: null,
+      timestamp: new Date().toISOString(),
+    };
+    if (existingIndex >= 0) list[existingIndex] = review;
+    else list.unshift(review);
+    try {
+      localStorage.setItem(REV_KEY, JSON.stringify(list));
+    } catch {}
+  };
+
+  const getItemRating = (itemId) => {
+    const list = getSavedReviews();
+    const found = list.find((r) => String(r.itemId) === String(itemId));
+    return found ? Number(found.rating || 0) : 0;
+  };
+
+  const [isFav, setIsFav] = useState(() => isDishFavorite(item.id));
+  const [rating, setRating] = useState(() => getItemRating(item.id));
+  const [hoverRating, setHoverRating] = useState(0);
+
+  const handleToggleFav = (e) => {
+    e?.stopPropagation();
+    const action = toggleFavoriteDish(item);
+    setIsFav(action === "added");
+    toast.success(action === "added" ? "Added to favorites" : "Removed from favorites");
+    if (action === "added") {
+      navigate(`/customer/dashboard?section=favorites`);
+    }
+  };
+
+  const handleRate = (value) => {
+    saveReview(item.id, value);
+    setRating(value);
+    toast.success(`Rated ${value} star${value > 1 ? "s" : ""}`);
+    navigate(`/customer/dashboard?section=reviews`);
+  };
 
   return (
     <div className={`menu-item-card ${qty > 0 ? "is-selected" : ""}`}>
       <div className="menu-item-card__head">
-        <div className={`diet-dot ${isVeg ? "is-veg" : "is-nonveg"}`} />
-        {item.popular ? <span className="menu-badge">Popular</span> : null}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className={`diet-dot ${isVeg ? "is-veg" : "is-nonveg"}`} />
+          {item.popular ? <span className="menu-badge">Popular</span> : null}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button type="button" className={`menu-item-fav ${isFav ? "is-active" : ""}`} onClick={handleToggleFav} aria-label={isFav ? "Remove from favorites" : "Add to favorites"}>
+            {isFav ? <AiFillHeart /> : <AiOutlineHeart />}
+          </button>
+        </div>
       </div>
 
       <div className="menu-item-card__body">
@@ -43,6 +150,21 @@ function MenuItemRow({ item, qty, onAdd, onRemove }) {
           <div className="menu-item-row__name">{item.name}</div>
           {item.description ? <div className="menu-item-row__desc">{item.description}</div> : null}
           <div className="menu-item-row__price">₹{Number(item.price || 0).toFixed(0)}</div>
+
+          <div className="menu-item-stars" onMouseLeave={() => setHoverRating(0)}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`star ${((hoverRating || rating) >= n) ? "is-filled" : ""}`}
+                onMouseEnter={() => setHoverRating(n)}
+                onClick={() => handleRate(n)}
+                aria-label={`Rate ${n} stars`}
+              >
+                {(hoverRating || rating) >= n ? <AiFillStar /> : <AiOutlineStar />}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="menu-item-row__right">
@@ -219,6 +341,7 @@ export default function RestaurantMenuPage() {
                   qty={qty}
                   onAdd={() => onAdd(item)}
                   onRemove={() => onRemove(item)}
+                  restaurant={restaurant}
                 />
               );
             })}
@@ -346,6 +469,11 @@ export default function RestaurantMenuPage() {
         .menu-item-card.is-selected .menu-item-image{transform:scale(1.03);}
         .menu-item-card__content{flex:1;min-width:0;}
         .menu-item-row__right{display:flex;align-items:center;margin-left:12px;}
+        .menu-item-fav{border:none;background:transparent;color:#9ca3af;font-size:20px;cursor:pointer;padding:6px;border-radius:8px;display:inline-grid;place-items:center;transition:transform .15s ease,color .15s ease}
+        .menu-item-fav.is-active{color:#ef4444;transform:scale(1.05)}
+        .menu-item-stars{display:flex;gap:6px;margin-top:8px}
+        .menu-item-stars .star{border:none;background:transparent;padding:4px;cursor:pointer;color:#cbd5e1;font-size:16px}
+        .menu-item-stars .star.is-filled{color:#f59e0b}
         .menu-item-card__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
         .diet-dot{width:14px;height:14px;border-radius:99px;border:2px solid #16a34a;}
         .diet-dot.is-nonveg{border-color:#dc2626;}

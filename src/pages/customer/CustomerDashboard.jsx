@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 
 import {
@@ -1647,10 +1647,22 @@ function FavoritesSection({ dashboardData, onOpenFlow }) {
     .map((order) => ({
       title: order.restaurant,
       meta: order.items,
-      description: `${order.time || ""} • ${order.amount || ""}`,
+      description: `${order.time || ""}  •  ${order.amount || ""}`,
       badge: "Previously ordered",
       tone: order.tone || "mint",
     }));
+
+  const [savedDishes, setSavedDishes] = useState([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("foodiehub_fav_dishes_v1");
+      if (raw) setSavedDishes(JSON.parse(raw));
+      else setSavedDishes([]);
+    } catch {
+      setSavedDishes([]);
+    }
+  }, []);
 
   return (
     <div className="dashboard-stack">
@@ -1683,18 +1695,18 @@ function FavoritesSection({ dashboardData, onOpenFlow }) {
           subtitle="A quick reminder of the meals you keep coming back for."
         >
           <div className="list-stack">
-            {(favoriteOrderHints.length ? favoriteOrderHints : favoriteDishes).map((dish) => (
-              <ListCard
-                key={`${dish.title}-${dish.meta}`}
-                icon={dish.icon || AiOutlineStar}
-                title={dish.title}
-                meta={dish.meta}
-                description={dish.description}
-                badge={dish.badge || "Top repeat"}
-                tone={dish.tone || "sunset"}
-              />
-            ))}
-          </div>
+              {(savedDishes.length ? savedDishes : (favoriteOrderHints.length ? favoriteOrderHints : favoriteDishes)).map((dish) => (
+                <ListCard
+                  key={`${dish.title || dish.name}-${dish.meta || dish.restaurantName || dish.name}`}
+                  icon={dish.icon || AiOutlineStar}
+                  title={dish.title || dish.name}
+                  meta={dish.meta || dish.restaurantName || dish.meta}
+                  description={dish.description || (dish.price ? `₹${dish.price}` : "")}
+                  badge={dish.badge || "Saved"}
+                  tone={dish.tone || "sunset"}
+                />
+              ))}
+            </div>
         </SectionShell>
       </div>
     </div>
@@ -1764,6 +1776,17 @@ function WalletSection({ onNavigate }) {
 }
 
 function ReviewsSection() {
+  const [savedReviews, setSavedReviews] = useState([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("foodiehub_reviews_v1");
+      if (raw) setSavedReviews(JSON.parse(raw));
+      else setSavedReviews([]);
+    } catch {
+      setSavedReviews([]);
+    }
+  }, []);
   return (
     <div className="dashboard-stack">
       <SectionShell
@@ -1784,15 +1807,15 @@ function ReviewsSection() {
         subtitle="A neat feed of the places you rated recently."
       >
         <div className="restaurant-grid">
-          {reviewCards.map((review) => (
+          {(savedReviews.length ? savedReviews : reviewCards).map((review) => (
             <ListCard
-              key={review.title}
-              icon={review.icon}
-              title={review.title}
-              meta={review.meta}
-              description={review.description}
-              badge={review.badge}
-              tone={review.tone}
+              key={review.itemId || review.title}
+              icon={review.icon || AiOutlineStar}
+              title={review.itemName || review.title}
+              meta={review.restaurantName || review.meta}
+              description={review.description || (review.rating ? `Rated ${review.rating} star${review.rating>1?"s":""}` : "")}
+              badge={review.badge || (review.rating ? `${review.rating}★` : undefined)}
+              tone={review.tone || "mint"}
             />
           ))}
         </div>
@@ -2133,6 +2156,7 @@ function SettingsSection() {
 
 function CustomerDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [dashboardData, setDashboardData] = useState(null);
   const [activeFlow, setActiveFlow] = useState(null);
   const [flowSaving, setFlowSaving] = useState(false);
@@ -2297,6 +2321,15 @@ function CustomerDashboard() {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get("section");
+    if (section) {
+      setActiveSection(section);
+    }
+    // Only when the location search changes
+  }, [location.search]);
 
   const section = sectionMeta[activeSection] ?? sectionMeta.home;
   const SectionComponent =
