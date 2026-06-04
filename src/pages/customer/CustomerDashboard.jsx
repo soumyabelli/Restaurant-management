@@ -2169,7 +2169,8 @@ function CustomerDashboard() {
           toast.error("Restaurant id not found");
           return;
         }
-        navigate(`/restaurant/${restaurantId}/menu`);
+            // Navigate to the restaurant menu (customer view)
+            navigate(`/restaurant/${restaurantId}/menu`);
         return;
       }
 

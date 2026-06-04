@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import api from "../../api/client";
 import toast from "react-hot-toast";
 import AvocadoImg from "../../assets/avacado toast.jfif";
@@ -196,6 +196,9 @@ function findImageForName(name) {
 export default function RestaurantMenuPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const restaurantLoginEmail = location?.state?.restaurantLoginEmail;
+  const restaurantLoginPassword = location?.state?.restaurantLoginPassword;
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -310,6 +313,11 @@ export default function RestaurantMenuPage() {
         <button type="button" className="link-button" onClick={() => navigate(-1)}>
           ← Back
         </button>
+        {restaurantLoginEmail ? (
+          <div style={{ marginLeft: 12, fontSize: 13, color: "#334155" }}>
+            <strong>Demo credentials:</strong>&nbsp;{restaurantLoginEmail} / {restaurantLoginPassword}
+          </div>
+        ) : null}
       </div>
 
       <div className="menu-hero">
