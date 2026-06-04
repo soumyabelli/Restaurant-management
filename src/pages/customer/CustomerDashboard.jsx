@@ -1168,7 +1168,7 @@ function HomeSection({
 
           <div className="hero-panel__visual">
             <img src={heroImage} alt="Featured food spread" />
-            <div className="hero-panel__visual-badge hero-panel__visual-badge--top">FoodieHub</div>
+            <div className="hero-panel__visual-badge hero-panel__visual-badge--top">Dinex</div>
             <div className="hero-panel__visual-badge hero-panel__visual-badge--bottom">{rewardPoints} pts</div>
           </div>
         </div>
@@ -2360,7 +2360,7 @@ function CustomerDashboard() {
             <MdOutlineRestaurantMenu />
           </button>
           <div className="sidebar-brand__text">
-            <strong>FoodieHub</strong>
+            <strong>DineX</strong>
             <span>Customer lounge</span>
           </div>
         </div>
