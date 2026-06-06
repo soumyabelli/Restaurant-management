@@ -103,7 +103,7 @@ function RestaurantDashboard() {
                 <div className="metric-change negative">▼ 2 mins <small>vs yesterday</small></div>
               </div>
             </div>
-            <p className="label">Avg. Prep Time</p>
+            <p className="label">Avarage Prep Time</p>
           </div>
           <div className="stat"> 
             <div className="stat-top">
@@ -138,7 +138,7 @@ function RestaurantDashboard() {
                   <div className="order-meta"><span className="tag">Delivery</span> <span className="distance">2.4 km away</span></div>
                 </div>
                 <div className="order-right">
-                  <div className="order-price">₹549</div>
+                  <div className="order-price">₹600</div>
                   <button className="accept-btn">Accept</button>
                 </div>
               </div>
