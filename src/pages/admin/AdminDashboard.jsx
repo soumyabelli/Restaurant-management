@@ -111,15 +111,105 @@ function AdminDashboard() {
     }
   }, [darkMode]);
 
-  // Get values from DB or fall back to beautiful mock details
-  const stats = [
-    { label: 'Total Users', value: dashboardData?.stats?.totalUsers ?? '12,568', change: '+15.8%', positive: true, icon: '👥', className: 'stat-users' },
-    { label: 'Total Restaurants', value: dashboardData?.stats?.totalRestaurants ?? '1,256', change: '+10.3%', positive: true, icon: '🏪', className: 'stat-restaurants' },
-    { label: 'Total Orders', value: dashboardData?.stats?.totalOrders ?? '8,945', change: '+22.5%', positive: true, icon: '🛍️', className: 'stat-orders' },
-    { label: 'Total Revenue', value: dashboardData?.stats?.totalRevenue ? `₹${dashboardData.stats.totalRevenue.toLocaleString()}` : '₹12,45,680', change: '+18.6%', positive: true, icon: '₹', className: 'stat-revenue' },
-    { label: 'Total Bookings', value: dashboardData?.stats?.totalReservations ?? '2,354', change: '+12.4%', positive: true, icon: '📅', className: 'stat-bookings' },
-    { label: 'Total Events', value: dashboardData?.stats?.totalEvents ?? '320', change: '+8.7%', positive: true, icon: '🎪', className: 'stat-events' }
+  const statsLive = dashboardData?.statsLive;
+
+  // LIVE stats for the 4 tiles you showed (today/yesterday + avg prep + ratings)
+  const liveStatsTiles = [
+    {
+      label: "Today's Orders",
+      value: statsLive?.todayOrdersCount ?? "0",
+      change: statsLive?.ordersChangePct != null ? `▲ ${statsLive.ordersChangePct}% vs yesterday` : "—",
+      positive: true,
+      icon: "🧾",
+      className: "stat-orders-live",
+    },
+    {
+      label: "Today's Revenue",
+      value:
+        statsLive?.todayRevenueSum != null
+          ? `₹${Number(statsLive.todayRevenueSum).toLocaleString()}`
+          : "₹0",
+      change: statsLive?.revenueChangePct != null ? `▲ ${statsLive.revenueChangePct}% vs yesterday` : "—",
+      positive: true,
+      icon: "💵",
+      className: "stat-revenue-live",
+    },
+    {
+      label: "Average Prep Time",
+      value:
+        statsLive?.todayAvgPrepMinutes != null
+          ? `${statsLive.todayAvgPrepMinutes} mins`
+          : "0 mins",
+      change: "—",
+      positive: false,
+      icon: "⏱️",
+      className: "stat-prep-live",
+    },
+    {
+      label: "Total Ratings",
+      value:
+        statsLive?.avgRestaurantRating != null
+          ? statsLive.avgRestaurantRating.toFixed(1)
+          : "0.0",
+      change: "—",
+      positive: true,
+      icon: "⭐",
+      className: "stat-ratings-live",
+    },
   ];
+
+  // Keep existing stats array for other UI parts (but remove dummy changes)
+  const stats = [
+    {
+      label: "Total Users",
+      value: dashboardData?.stats?.totalUsers ?? 0,
+      change: "",
+      positive: true,
+      icon: "👥",
+      className: "stat-users",
+    },
+    {
+      label: "Total Restaurants",
+      value: dashboardData?.stats?.totalRestaurants ?? 0,
+      change: "",
+      positive: true,
+      icon: "🏪",
+      className: "stat-restaurants",
+    },
+    {
+      label: "Total Orders",
+      value: dashboardData?.stats?.totalOrders ?? 0,
+      change: "",
+      positive: true,
+      icon: "🛍️",
+      className: "stat-orders",
+    },
+    {
+      label: "Total Revenue",
+      value: dashboardData?.stats?.totalRevenue != null ? `₹${dashboardData.stats.totalRevenue.toLocaleString()}` : "₹0",
+      change: "",
+      positive: true,
+      icon: "₹",
+      className: "stat-revenue",
+    },
+    {
+      label: "Total Bookings",
+      value: dashboardData?.stats?.totalReservations ?? 0,
+      change: "",
+      positive: true,
+      icon: "📅",
+      className: "stat-bookings",
+    },
+    {
+      label: "Total Events",
+      value: dashboardData?.stats?.totalEvents ?? 0,
+      change: "",
+      positive: true,
+      icon: "🎪",
+      className: "stat-events",
+    },
+  ];
+
 
   const dbActivities = dashboardData?.activities ?? [];
   const dbTopRestaurants = dashboardData?.topRestaurants ?? [];
@@ -544,9 +634,9 @@ function AdminDashboard() {
 
         {activeMenu === 'Dashboard' ? (
           <>
-            {/* STATS ROW */}
+            {/* STATS ROW (live) */}
             <section className="admin-stats-grid">
-              {stats.map((stat) => (
+              {(liveStatsTiles || []).map((stat) => (
                 <div className="admin-stat-card" key={stat.label}>
                   <div className={`admin-stat-icon-wrapper ${stat.className}`}>
                     {stat.icon}
@@ -556,12 +646,12 @@ function AdminDashboard() {
                     <span className="admin-stat-value">{stat.value}</span>
                     <div className={`admin-stat-percentage ${stat.positive ? 'positive' : 'negative'}`}>
                       <span>{stat.change}</span>
-                      <span className="admin-stat-timeframe">vs last 7 days</span>
                     </div>
                   </div>
                 </div>
               ))}
             </section>
+
 
             {/* CHARTS ROW */}
             <section className="admin-charts-grid">
