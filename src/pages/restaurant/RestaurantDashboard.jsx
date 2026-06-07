@@ -34,14 +34,14 @@ function RestaurantDashboard() {
         <nav className="rh-nav">
           <button className="rh-nav-item is-active"><AiOutlineHome /> Dashboard</button>
           <button className="rh-nav-item"><AiOutlineShop /> Menu Management</button>
-          <button className="rh-nav-item"><AiOutlineBell /> Orders</button>
+          <button className="rh-nav-item"><AiOutlineBell /> Total Orders</button>
           <button className="rh-nav-item"><AiOutlineBell /> Delivery</button>
-          <button className="rh-nav-item"><AiOutlineBell /> Customers</button>
+          <button className="rh-nav-item"><AiOutlineBell />Total Customers</button>
           <button className="rh-nav-item"><AiOutlineBell /> Reviews</button>
           <button className="rh-nav-item"><AiOutlineBell /> Reviews and Ratings</button>
           <button className="rh-nav-item"><AiOutlineBell /> Analytics</button>
           <button className="rh-nav-item"><AiOutlineBell /> Payout</button>
-          <button className="rh-nav-item"><AiOutlineMenu /> Reservations</button>
+          <button className="rh-nav-item"><AiOutlineMenu />Total  Reservations</button>
           <button className="rh-nav-item"><AiOutlineSetting /> Settings</button>
         </nav>
 
@@ -70,7 +70,7 @@ function RestaurantDashboard() {
           </div>
           <div className="rh-top-right">
             <button className="btn-outline" onClick={() => navigate(`/restaurant/${user?.id || 'demo'}/menu`)}>View Restaurant Page</button>
-            <button className="btn-primary">+ Add New Item</button>
+            <button className="btn-primary">+ Add New Items to the Restaurants</button>
           </div>
         </header>
 
@@ -80,7 +80,7 @@ function RestaurantDashboard() {
               <div className="metric-icon">🧾</div>
               <div className="metric-value"> 
                 <h3>{stats.ordersToday}</h3>
-                <div className="metric-change positive">▲ 23% <small>vs yesterday</small></div>
+                <div className="metric-change positive">▲  <small> yesterday</small></div>
               </div>
             </div>
             <p className="label">Today's Orders</p>
@@ -90,7 +90,7 @@ function RestaurantDashboard() {
               <div className="metric-icon">💵</div>
               <div className="metric-value"> 
                 <h3>₹{stats.revenue.toLocaleString()}</h3>
-                <div className="metric-change positive">▲ 18.6% <small>vs yesterday</small></div>
+                <div className="metric-change positive">▲ <small>vs yesterday</small></div>
               </div>
             </div>
             <p className="label">Today's Revenue</p>
@@ -100,7 +100,7 @@ function RestaurantDashboard() {
               <div className="metric-icon">⏱️</div>
               <div className="metric-value"> 
                 <h3>{stats.prepTime}</h3>
-                <div className="metric-change negative">▼ 2 mins <small>vs yesterday</small></div>
+                <div className="metric-change negative">▼ 2 mins <small> yesterday</small></div>
               </div>
             </div>
             <p className="label">Avarage Prep Time</p>
@@ -133,7 +133,7 @@ function RestaurantDashboard() {
               <div className="order-item">
                 <div className="order-left">
                   <div className="order-id">#ORD12345</div>
-                  <div className="order-customer">Priya Sharma</div>
+                  <div className="order-customer">Priya </div>
                   <div className="order-items">2 x Butter Chicken, 1 x Garlic Naan</div>
                   <div className="order-meta"><span className="tag">Delivery</span> <span className="distance">2.4 km away</span></div>
                 </div>
@@ -147,11 +147,11 @@ function RestaurantDashboard() {
                 <div className="order-left">
                   <div className="order-id">#ORD12346</div>
                   <div className="order-customer">Rohit Verma</div>
-                  <div className="order-items">1 x Veg Biryani, 1 x Raita</div>
+                  <div className="order-items">2 x Veg Biryani, 1 x Raita</div>
                   <div className="order-meta"><span className="tag">Delivery</span> <span className="distance">1.8 km away</span></div>
                 </div>
                 <div className="order-right">
-                  <div className="order-price">₹279</div>
+                  <div className="order-price">₹500</div>
                   <button className="accept-btn">Accept</button>
                 </div>
               </div>
@@ -164,8 +164,8 @@ function RestaurantDashboard() {
                   <div className="order-meta"><span className="tag">Delivery</span> <span className="distance">3.1 km away</span></div>
                 </div>
                 <div className="order-right">
-                  <div className="order-price">₹689</div>
-                  <button className="accept-btn">Accept</button>
+                  <div className="order-price">₹800</div>
+                  <button className="accept-btn">Accepted</button>
                 </div>
               </div>
             </div>
