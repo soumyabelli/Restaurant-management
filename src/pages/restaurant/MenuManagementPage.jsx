@@ -25,12 +25,12 @@ function MenuManagementPage() {
         setLoading(false);
         return;
       }
-      const res = await fetch("http://localhost:5000/api/restaurant/dashboard", {
+      const res = await fetch("http://localhost:5000/api/restaurant/menu", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
       if (json.success) {
-        setMenu(json.data.restaurant.menu || []);
+        setMenu(Array.isArray(json.data) ? json.data : (json.data?.restaurant?.menu || []));
       } else {
         throw new Error(json.message);
       }

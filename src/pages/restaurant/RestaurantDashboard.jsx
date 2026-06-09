@@ -59,21 +59,21 @@ function RestaurantDashboard() {
 
   if (!data) return null;
 
-  const {
-    restaurant,
-    todayOrdersCount,
-    yesterdayOrdersCount,
-    todayRevenueSum,
-    yesterdayRevenueSum,
-    totalOrders,
-    activeOrders,
-    deliveredOrders,
-    cancelledOrders,
-    liveOrders,
-    ordersByStatus,
-    topSelling,
-    revenueSeries,
-  } = data;
+ const {
+  restaurant = {},
+  todayOrdersCount = 0,
+  yesterdayOrdersCount = 0,
+  todayRevenueSum = 0,
+  yesterdayRevenueSum = 0,
+  totalOrders = 0,
+  activeOrders = 0,
+  deliveredOrders = 0,
+  cancelledOrders = 0,
+  liveOrders = [],
+  ordersByStatus = {},
+  topSelling = [],
+  revenueSeries = [],
+} = data || {};
 
   const name = restaurant?.name || user?.name || 'The Coastal Kitchen';
   const stats = {
@@ -165,7 +165,7 @@ function RestaurantDashboard() {
           <div className="card-header">
             <h3>Live Orders</h3>
             <div className="tabs">
-              <button className="tab active">New <span className="tab-count">{ordersByStatus.new || 0}</span></button>
+              <button className="tab active">New <span className="tab-count">{ordersByStatus?.new || 0}</span></button>
               <button className="tab">Preparing <span className="tab-count">{ordersByStatus.preparing || 0}</span></button>
               <button className="tab">Ready <span className="tab-count">{ordersByStatus.ready || 0}</span></button>
               <button className="tab">Out for Delivery <span className="tab-count">{ordersByStatus.delivery || 0}</span></button>
