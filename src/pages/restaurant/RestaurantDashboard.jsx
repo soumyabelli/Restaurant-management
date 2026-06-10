@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import api from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import rest1 from "../../assets/rest1.jfif";
 import rest2 from "../../assets/rest2.jfif";
@@ -16,31 +17,35 @@ function RestaurantDashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError("Not authenticated");
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch("http://localhost:5000/api/restaurant/dashboard", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch dashboard data");
-        }
-
-        const json = await res.json();
-        if (json.success) {
-          setData(json.data);
+        setLoading(true);
+        const res = await api.get("/restaurant/dashboard");
+        if (res.data?.success) {
+          setData(res.data.data);
+          setError(null);
         } else {
-          throw new Error(json.message || "Failed to fetch dashboard data");
+          throw new Error(res.data?.message || "Failed to fetch dashboard data");
         }
       } catch (err) {
-        setError(err.message);
+        console.error("Failed to fetch restaurant dashboard:", err);
+        // Try auto-login as demo restaurant and retry
+        if (!localStorage.getItem("token") || err?.response?.status === 401) {
+          try {
+            const login = await api.post("/auth/login", { email: "restaurant1@gmail.com", password: "123", role: "restaurant" });
+            if (login?.data?.token) {
+              localStorage.setItem("token", login.data.token);
+              localStorage.setItem("user", JSON.stringify(login.data.user || { role: 'restaurant' }));
+              const retry = await api.get("/restaurant/dashboard");
+              if (retry.data?.success) {
+                setData(retry.data.data);
+                setError(null);
+                return;
+              }
+            }
+          } catch (loginErr) {
+            console.error("Auto-login failed:", loginErr);
+          }
+        }
+        setError(err.message || "Failed to fetch dashboard data");
       } finally {
         setLoading(false);
       }

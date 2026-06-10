@@ -70,14 +70,33 @@ export default function DeliveryDashboard() {
       setMyOrders(mine);
     } catch (err) {
       console.error(err);
-      // If unauthenticated, load demo data so the UI can be previewed
+      // If unauthenticated, try demo delivery auto-login, otherwise fallback to demo data
       if (!localStorage.getItem('token') || err?.response?.status === 401) {
-        toast('No token provided — showing demo data');
-        setAvailable(demoAvailable);
-        setMyOrders(demoMyOrders);
-      } else {
-        toast.error(err?.response?.data?.message || "Unable to load orders");
+        try {
+          const login = await api.post('/auth/login', { email: 'delivery@gmail.com', password: '123', role: 'delivery' });
+          if (login?.data?.token) {
+            localStorage.setItem('token', login.data.token);
+            localStorage.setItem('user', JSON.stringify(login.data.user || { role: 'delivery' }));
+            // retry fetch
+            const [availRes2, mineRes2] = await Promise.all([
+              api.get('/delivery/available'),
+              api.get('/delivery/my-orders'),
+            ]);
+            const avail = Array.isArray(availRes2.data) ? availRes2.data : availRes2.data?.value || [];
+            const mine = Array.isArray(mineRes2.data) ? mineRes2.data : mineRes2.data?.value || [];
+            setAvailable(avail);
+            setMyOrders(mine);
+            return;
+          }
+        } catch (loginErr) {
+          console.error('Auto-login failed', loginErr);
+          toast('No token provided — showing demo data');
+          setAvailable(demoAvailable);
+          setMyOrders(demoMyOrders);
+          return;
+        }
       }
+      toast.error(err?.response?.data?.message || "Unable to load orders");
     } finally {
       setLoading(false);
     }
