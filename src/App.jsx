@@ -25,6 +25,14 @@ import TotalReservationsPage from "./pages/restaurant/TotalReservationsPage";
 import SettingsPage from "./pages/restaurant/SettingsPage";
 
 import DeliveryDashboard from "./pages/delivery/DeliveryDashboard";
+import NewOrders from "./pages/delivery/NewOrders";
+import MyDeliveries from "./pages/delivery/MyDeliveries";
+import Earnings from "./pages/delivery/Earnings";
+import Wallet from "./pages/delivery/Wallet";
+import Performance from "./pages/delivery/Performance";
+import Incentives from "./pages/delivery/Incentives";
+import HelpSupport from "./pages/delivery/HelpSupport";
+import Settings from "./pages/delivery/Settings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
@@ -58,7 +66,18 @@ function App() {
         <Route path="/restaurant/:id/checkout" element={<RestaurantCheckoutPage />} />
         <Route path="/restaurant/:id/reserve" element={<RestaurantReservationPage />} />
 
-        <Route path="/delivery/dashboard" element={<DeliveryDashboard />} />
+        <Route path="/delivery" element={<RestaurantLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<DeliveryDashboard />} />
+          <Route path="new-orders" element={<NewOrders />} />
+          <Route path="my-deliveries" element={<MyDeliveries />} />
+          <Route path="earnings" element={<Earnings />} />
+          <Route path="wallet" element={<Wallet />} />
+          <Route path="performance" element={<Performance />} />
+          <Route path="incentives" element={<Incentives />} />
+          <Route path="help" element={<HelpSupport />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

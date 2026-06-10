@@ -13,6 +13,7 @@ function RestaurantSidebar({ name, status = "Open" }) {
   const displayName = name || user?.name || 'The Coastal Kitchen';
 
   const menuItems = [
+    // default restaurant menu (used when not in /delivery)
     { name: "Dashboard", path: "/restaurant/dashboard", icon: <AiOutlineHome /> },
     { name: "Menu Management", path: "/restaurant/menu-management", icon: <AiOutlineShop /> },
     { name: "Total Orders", path: "/restaurant/orders", icon: <AiOutlineBell /> },
@@ -26,6 +27,18 @@ function RestaurantSidebar({ name, status = "Open" }) {
     { name: "Settings", path: "/restaurant/settings", icon: <AiOutlineSetting /> },
   ];
 
+  const deliveryMenu = [
+    { name: "Dashboard", path: "/delivery/dashboard", icon: <AiOutlineHome /> },
+    { name: "New Orders", path: "/delivery/new-orders", icon: <AiOutlineBell />, badgeCount: 2 },
+    { name: "My Deliveries", path: "/delivery/my-deliveries", icon: <AiOutlineShop /> },
+    { name: "Earnings", path: "/delivery/earnings", icon: <AiOutlineBell /> },
+    { name: "Wallet", path: "/delivery/wallet", icon: <AiOutlineBell /> },
+    { name: "Performance", path: "/delivery/performance", icon: <AiOutlineBell /> },
+    { name: "Incentives", path: "/delivery/incentives", icon: <AiOutlineBell /> },
+    { name: "Help & Support", path: "/delivery/help", icon: <AiOutlineBell /> },
+    { name: "Settings", path: "/delivery/settings", icon: <AiOutlineSetting /> },
+  ];
+
   return (
     <aside className="rh-sidebar">
       <div className="rh-brand">
@@ -36,13 +49,17 @@ function RestaurantSidebar({ name, status = "Open" }) {
       </div>
 
       <nav className="rh-nav">
-        {menuItems.map((item) => (
+        {(location.pathname.startsWith('/delivery') ? deliveryMenu : menuItems).map((item) => (
           <button
             key={item.name}
             className={`rh-nav-item ${location.pathname === item.path ? 'is-active' : ''}`}
             onClick={() => navigate(item.path)}
           >
-            {item.icon} {item.name}
+            <span className="nav-left">
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.name}</span>
+            </span>
+            {item.badgeCount ? <span className="nav-badge">{item.badgeCount}</span> : null}
           </button>
         ))}
       </nav>
@@ -52,6 +69,14 @@ function RestaurantSidebar({ name, status = "Open" }) {
         <div>
           <strong>{displayName}</strong>
           <div className="status">{status}</div>
+        </div>
+      </div>
+
+      <div className="rh-refer">
+        <div className="gift">🎁</div>
+        <div className="refer-body">
+          <div className="refer-title">Refer & Earn</div>
+          <div className="muted">Invite friends and earn ₹500 extra</div>
         </div>
       </div>
     </aside>

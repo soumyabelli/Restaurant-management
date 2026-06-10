@@ -3,6 +3,7 @@ import api from "../../api/client";
 import toast from "react-hot-toast";
 import { FiRefreshCw, FiMapPin } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
+import "../../styles/restaurant-dashboard.css";
 
 function fmtMoney(v) {
   const n = Number(v || 0);
@@ -14,6 +15,46 @@ export default function DeliveryDashboard() {
   const [myOrders, setMyOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+
+  // demo fallback data to preview the dashboard when unauthenticated
+  const demoAvailable = [
+    {
+      _id: 'demo1',
+      orderCode: '#FD1001',
+      items: [{ name: 'Paneer Tikka Pizza', quantity: 1 }],
+      total: 485,
+      status: 'New',
+      createdAt: new Date().toISOString(),
+      userId: { name: 'Rohit Sharma', phone: '9876543210' },
+      restaurantName: 'Spice Corner',
+      address: 'MG Road',
+    },
+    {
+      _id: 'demo2',
+      orderCode: '#FD1002',
+      items: [{ name: 'Veg Burger', quantity: 2 }],
+      total: 250,
+      status: 'Preparing',
+      createdAt: new Date().toISOString(),
+      userId: { name: 'Priya Patel', phone: '9123456780' },
+      restaurantName: 'Burger Hub',
+      address: 'Park Street',
+    },
+  ];
+
+  const demoMyOrders = [
+    {
+      _id: 'my1',
+      orderCode: '#FD1010',
+      items: [{ name: 'Chicken Biryani', quantity: 1 }],
+      total: 675,
+      status: 'On the way',
+      createdAt: new Date().toISOString(),
+      userId: { name: 'Aman Verma', phone: '9012345678' },
+      restaurantName: 'Biryani Palace',
+      address: 'Lake Road',
+    },
+  ];
 
   const fetchLists = async () => {
     setLoading(true);
@@ -29,7 +70,14 @@ export default function DeliveryDashboard() {
       setMyOrders(mine);
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Unable to load orders");
+      // If unauthenticated, load demo data so the UI can be previewed
+      if (!localStorage.getItem('token') || err?.response?.status === 401) {
+        toast('No token provided — showing demo data');
+        setAvailable(demoAvailable);
+        setMyOrders(demoMyOrders);
+      } else {
+        toast.error(err?.response?.data?.message || "Unable to load orders");
+      }
     } finally {
       setLoading(false);
     }
@@ -82,6 +130,21 @@ export default function DeliveryDashboard() {
 
   const combined = useMemo(() => [...available, ...myOrders], [available, myOrders]);
 
+  const groupedAvailable = useMemo(() => {
+    const map = {};
+    (available || []).forEach((o) => {
+      const r = o.restaurantId?.name || o.restaurantName || 'Unknown Restaurant';
+      if (!map[r]) map[r] = [];
+      map[r].push(o);
+    });
+    return map;
+  }, [available]);
+
+  const currentOrder = useMemo(() => {
+    if ((myOrders || []).length) return myOrders[0];
+    return null;
+  }, [myOrders]);
+
   const stats = useMemo(() => {
     const totalOrders = combined.length;
     const activeOrders = combined.filter((o) => o.active).length;
@@ -109,6 +172,26 @@ export default function DeliveryDashboard() {
     });
     return Object.values(counts).sort((a, b) => b.orders - a.orders).slice(0, 5);
   }, [combined]);
+
+  const earnings = useMemo(() => {
+    const total = stats.revenue || 0;
+    const base = Math.round(total * 0.6);
+    const incentives = Math.round(total * 0.25);
+    const tips = Math.round(total * 0.15);
+    return { total, base, incentives, tips };
+  }, [stats]);
+
+  const summary = useMemo(() => {
+    return {
+      completed: statusCounts['Delivered'] || 0,
+      cancelled: statusCounts['Cancelled'] || 0,
+      acceptanceRate: 96,
+      onTime: 92,
+      hoursOnline: '6h 45m',
+    };
+  }, [statusCounts]);
+
+  const incentive = useMemo(() => ({ target: 15, done: 10, percent: Math.round((10 / 15) * 100) }), []);
 
   const renderOrderRow = (o, isMine = false) => {
     const id = o._id || o.id;
@@ -167,40 +250,109 @@ export default function DeliveryDashboard() {
         </div>
       </div>
 
-      <div className="dd-stats">
-        <div className="stat-card orange">
-          <div className="stat-top"><div className="stat-title">Total Orders</div><div className="stat-value">{stats.totalOrders}</div></div>
-          <div className="stat-sub">{statusCounts && statusCounts.New ? `${statusCounts.New} new orders` : ''}</div>
+      <section className="rh-stats">
+        <div className="stat">
+          <div className="stat-top">
+            <div className="metric-icon">📦</div>
+            <div className="metric-value">
+              <h3>{stats.totalOrders}</h3>
+              <div className="metric-change muted">{statusCounts && statusCounts.New ? `${statusCounts.New} new` : ''}</div>
+            </div>
+          </div>
+          <p className="label">Total Orders</p>
         </div>
 
-        <div className="stat-card green">
-          <div className="stat-top"><div className="stat-title">Revenue</div><div className="stat-value">{fmtMoney(stats.revenue)}</div></div>
-          <div className="stat-sub">{Math.round(Math.random()*30)}% from yesterday</div>
+        <div className="stat">
+          <div className="stat-top">
+            <div className="metric-icon">💵</div>
+            <div className="metric-value">
+              <h3>{fmtMoney(stats.revenue)}</h3>
+              <div className="metric-change muted">{Math.round(Math.random()*30)}% vs yesterday</div>
+            </div>
+          </div>
+          <p className="label">Revenue</p>
         </div>
 
-        <div className="stat-card light">
-          <div className="stat-top"><div className="stat-title">Active Orders</div><div className="stat-value">{stats.activeOrders}</div></div>
-          <div className="stat-sub">Live orders in progress</div>
+        <div className="stat">
+          <div className="stat-top">
+            <div className="metric-icon">🚚</div>
+            <div className="metric-value">
+              <h3>{stats.activeOrders}</h3>
+              <div className="metric-change muted">Live in progress</div>
+            </div>
+          </div>
+          <p className="label">Active Orders</p>
         </div>
 
-        <div className="stat-card blue">
-          <div className="stat-top"><div className="stat-title">Avg. Delivery Time</div><div className="stat-value">{stats.avgDeliveryTime} min</div></div>
-          <div className="stat-sub">{Math.round(Math.random()*10)} min from yesterday</div>
+        <div className="stat">
+          <div className="stat-top">
+            <div className="metric-icon">⏱️</div>
+            <div className="metric-value">
+              <h3>{stats.avgDeliveryTime} min</h3>
+              <div className="metric-change muted">{Math.round(Math.random()*10)} min from yesterday</div>
+            </div>
+          </div>
+          <p className="label">Avg. Delivery Time</p>
+        </div>
+      </section>
+
+      <div className="online-banner card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div className="badge">You're Online</div>
+            <div className="muted" style={{marginTop:6}}>Orders will be assigned automatically</div>
+          </div>
+          <div>
+            <img src="/src/assets/rest6.jfif" alt="rider" style={{height:72,borderRadius:8}} />
+          </div>
         </div>
       </div>
 
-      <div className="grid">
+      <div className="rh-grid">
         <main className="col-main">
-          <div className="card overview">
+          <div className="card current-order-card">
             <div className="card-head">
-              <h3>Order Overview</h3>
-              <div className="card-actions">Today</div>
+              <h3>Current Order</h3>
+              <div className="card-actions">{currentOrder ? 'In progress' : 'No active delivery'}</div>
             </div>
-            <div className="sparkline">
-              <svg width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none">
-                <polyline fill="none" stroke="#ff7a29" strokeWidth="3" points="0,60 40,50 80,38 120,30 160,24 200,28 240,20 280,30 320,26 360,32 400,28" />
-              </svg>
-            </div>
+            {currentOrder ? (
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'start'}}>
+                <div>
+                  <div style={{fontWeight:800,fontSize:18}}>{currentOrder.restaurantName || currentOrder.restaurantId?.name}</div>
+                  <div className="muted" style={{marginTop:6}}>{currentOrder.orderCode || currentOrder._id}</div>
+
+                  <div style={{marginTop:12}}>
+                    <div className="muted">Pickup</div>
+                    <div style={{fontWeight:700}}>{currentOrder.address || currentOrder.restaurantAddress || 'Restaurant address'}</div>
+                    <div className="distance muted">2.1 km</div>
+                  </div>
+
+                  <div style={{marginTop:12}}>
+                    <div className="muted">Dropoff</div>
+                    <div style={{fontWeight:700}}>{currentOrder.userId?.name || currentOrder.user?.name || 'Customer'}</div>
+                    <div className="muted">{currentOrder.address || '-'} • 5.7 km</div>
+                  </div>
+
+                  <div style={{marginTop:14}}>
+                    <div className="muted">Order Amount</div>
+                    <div style={{fontWeight:800,fontSize:18}}>{fmtMoney(currentOrder.total || currentOrder.amount)}</div>
+                  </div>
+
+                  <div style={{marginTop:12}}>
+                    <button className="accept-btn">Navigate to Restaurant</button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="map-placeholder" style={{height:240,borderRadius:12,overflow:'hidden'}}>
+                    <div style={{width:'100%',height:'100%',background:'linear-gradient(180deg,#0b1226,#1f2937)'}} />
+                  </div>
+                  <div style={{marginTop:8,fontSize:13,color:'#64748b'}}>Rider: Rahul Singh <span style={{marginLeft:8}}>ETA: 12 mins • 2.4 km away</span></div>
+                </div>
+              </div>
+            ) : (
+              <div className="muted">No active order assigned to you. Accept an order from New Orders below.</div>
+            )}
           </div>
 
           <div className="card recent">
@@ -234,9 +386,88 @@ export default function DeliveryDashboard() {
               </div>
             </div>
           </div>
+          <div className="card new-orders">
+            <div className="card-head">
+              <h3>New Orders</h3>
+              <div className="tab-count">{available.length}</div>
+            </div>
+
+            <div className="orders-list">
+              {Object.keys(groupedAvailable).length === 0 && <div className="muted">No new orders</div>}
+              {Object.entries(groupedAvailable).map(([rest, orders])=> (
+                <div key={rest} className="card" style={{padding:12,borderRadius:10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div style={{fontWeight:800}}>{rest}</div>
+                    <div className="muted">{orders.length} orders</div>
+                  </div>
+                  <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:8}}>
+                    {orders.map((o)=> (
+                      <div key={o._id||o.id} className="order-item">
+                        <div className="order-left">
+                          <div className="order-id">{o.orderCode || (o._id||o.id)}</div>
+                          <div className="order-customer">{(o.items||[]).map(i=>i.name).slice(0,2).join(', ')}</div>
+                          <div className="order-meta muted">{o.userId?.name || o.user?.name || 'Customer'}</div>
+                        </div>
+                        <div className="order-right">
+                          <div className="order-price">{fmtMoney(o.total||o.amount)}</div>
+                          <div style={{display:'flex',gap:8}}>
+                            <button className="accept-btn" onClick={()=>acceptOrder(o._id||o.id)}>Accept</button>
+                            <button className="btn-outline" onClick={()=>toast('Rejected')}>Reject</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </main>
 
         <aside className="col-aside">
+          <div className="card earnings card-dark">
+            <h3>Today's Earnings</h3>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div className="earnings-amount">{fmtMoney(earnings.total || 1245.6)}</div>
+                <div className="metric-change" style={{color:'#10b981',marginTop:6}}>▲ {fmtMoney((earnings.total||0) - (earnings.total||0)*0.22)} more than yesterday</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <button className="cashout-btn">Cash Out</button>
+              </div>
+            </div>
+
+            <div className="earnings-breakdown" style={{marginTop:12}}>
+              <div className="muted">Base Earnings <span style={{float:'right'}}>{fmtMoney(earnings.base)}</span></div>
+              <div className="muted">Incentives <span style={{float:'right'}}>{fmtMoney(earnings.incentives)}</span></div>
+              <div className="muted">Tips <span style={{float:'right'}}>{fmtMoney(earnings.tips)}</span></div>
+            </div>
+          </div>
+
+          <div className="card summary card-dark">
+            <h3>Today's Summary</h3>
+            <div className="summary-row">
+              <div>Completed Orders</div>
+              <div><strong>{summary.completed}</strong></div>
+            </div>
+            <div className="summary-row">
+              <div>Cancelled Orders</div>
+              <div><strong>{summary.cancelled}</strong></div>
+            </div>
+            <div className="summary-row">
+              <div>Acceptance Rate</div>
+              <div><strong>{summary.acceptanceRate}%</strong></div>
+            </div>
+            <div className="summary-row">
+              <div>On-time Delivery</div>
+              <div><strong>{summary.onTime}%</strong></div>
+            </div>
+            <div className="summary-row">
+              <div>Hours Online</div>
+              <div><strong>{summary.hoursOnline}</strong></div>
+            </div>
+          </div>
+
           <div className="card status">
             <h3>Order Status</h3>
             <div className="status-grid">
@@ -251,7 +482,7 @@ export default function DeliveryDashboard() {
                     const pct = (c/total)*100;
                     if(pct>0) { parts.push(`${color} ${start}% ${start + pct}%`); start += pct; }
                   });
-                  if(parts.length===0) return '#e5e7eb';
+                  if(parts.length===0) return '#1f2937';
                   return `conic-gradient(${parts.join(',')})`;
                 })() }}>
                   <div className="donut-center">{stats.totalOrders}</div>
@@ -296,76 +527,7 @@ export default function DeliveryDashboard() {
         </aside>
       </div>
 
-      <style>{`
-        .delivery-dashboard{padding:26px;max-width:1200px;margin:0 auto;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;color:#0f172a}
-        .header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-        .header-row h2{margin:0;font-size:22px}
-        .muted{color:#64748b;font-size:13px}
-        .header-actions{display:flex;align-items:center;gap:12px}
-        .small-card{background:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.04);text-align:center}
-        .small-title{font-size:12px;color:#94a3b8}
-        .small-value{font-weight:700}
-        .icon-btn{background:#fff;border:1px solid #eef2f7;padding:8px;border-radius:10px;cursor:pointer}
-
-        .dd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-        .stat-card{background:white;padding:14px;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,0.04);}
-        .stat-top{display:flex;justify-content:space-between;align-items:center}
-        .stat-title{font-size:13px;color:#64748b}
-        .stat-value{font-size:20px;font-weight:800}
-        .stat-sub{font-size:12px;color:#94a3b8;margin-top:8px}
-        .stat-card.orange .stat-value{color:#ff7a29}
-        .stat-card.green .stat-value{color:#10b981}
-        .stat-card.blue .stat-value{color:#2563eb}
-
-        .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
-        .col-main .card, .col-aside .card{background:white;padding:16px;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,0.04);margin-bottom:16px}
-        .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-        .card-head h3{margin:0}
-
-        .sparkline{height:80px}
-
-        .table{border-top:1px solid #f1f5f9}
-        .thead{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:12px 8px;font-size:13px;color:#64748b}
-        .tbody{display:flex;flex-direction:column}
-        .tr{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:10px 8px;border-bottom:1px solid #f8fafc;align-items:center}
-        .tr .muted{color:#94a3b8}
-
-        .od-row{background:#fff;border-radius:10px;padding:12px;border:1px solid #f1f5f9}
-        .od-row-top{display:flex;justify-content:space-between;align-items:flex-start}
-        .od-left{display:flex;flex-direction:column}
-        .od-code{font-weight:800}
-        .od-meta{font-size:13px;color:#6b7280}
-        .od-right{text-align:right}
-        .od-amt{font-weight:800}
-        .od-status{font-size:12px;color:#64748b}
-        .od-row-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-        .od-bottom{font-size:13px;color:#475569}
-        .od-actions{display:flex;gap:8px}
-        .od-actions button{padding:8px 10px;border-radius:8px;border:1px solid #e6e6e6;background:white;cursor:pointer}
-        .od-actions .accept{background:#ff7a29;color:white;border:none}
-
-        .status-grid{display:flex;gap:12px;align-items:center}
-        .donut-wrapper{width:140px}
-        .donut{width:120px;height:120px;border-radius:999px;display:flex;align-items:center;justify-content:center}
-        .donut-center{background:white;width:70%;height:70%;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:800}
-        .status-list{display:flex;flex-direction:column;gap:8px;margin-left:8px}
-        .status-row{display:flex;justify-content:space-between;gap:12px}
-
-        .map-placeholder{height:160px;background:linear-gradient(180deg,#f8fafc,#ffffff);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
-        .rider{font-size:13px;color:#475569}
-
-        .sellers ol{padding:0;margin:0;list-style:none;display:flex;flex-direction:column;gap:8px}
-        .sellers li{display:flex;align-items:center;gap:12px}
-        .rank{width:28px;height:28px;border-radius:6px;background:#f1f5f9;display:grid;place-items:center;font-weight:700}
-
-        .partners ul{list-style:none;padding:0;margin:0}
-        .partners li{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #f1f5f9}
-        .tag{padding:6px 10px;border-radius:999px;font-size:12px}
-        .tag.online{background:#ecfdf5;color:#065f46}
-        .tag.busy{background:#fff7ed;color:#92400e}
-
-        @media (max-width: 980px){.grid{grid-template-columns:1fr}.dd-stats{grid-template-columns:repeat(2,1fr)}.thead{font-size:12px}}
-      `}</style>
+        {/* layout styles are provided by restaurant-dashboard.css from the shared layout */}
     </div>
   );
 }
