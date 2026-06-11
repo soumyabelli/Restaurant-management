@@ -74,6 +74,8 @@ function RestaurantDashboard() {
   activeOrders = 0,
   deliveredOrders = 0,
   cancelledOrders = 0,
+  totalCustomers = 0,
+  totalReservations = 0,
   liveOrders = [],
   ordersByStatus = {},
   topSelling = [],
@@ -89,6 +91,8 @@ function RestaurantDashboard() {
     prepTime: '18 mins', // Could be dynamic if backed provides it
     totalRatings: restaurant?.rating || '4.6',
     totalReviews: 1248,
+    totalCustomers: totalCustomers || 0,
+    totalReservations: totalReservations || 0,
   };
 
   const orderChange = stats.ordersToday - stats.ordersYesterday;
@@ -119,7 +123,7 @@ function RestaurantDashboard() {
       </header>
 
       <section className="rh-stats">
-        <div className="stat"> 
+        <div className="stat" > 
           <div className="stat-top">
             <div className="metric-icon">🧾</div>
             <div className="metric-value"> 
@@ -130,6 +134,24 @@ function RestaurantDashboard() {
             </div>
           </div>
           <p className="label">Today's Orders</p>
+        </div>
+        <div className="stat" > 
+          <div className="stat-top">
+            <div className="metric-icon">👥</div>
+            <div className="metric-value"> 
+              <h3>{stats.totalCustomers}</h3>
+            </div>
+          </div>
+          <p className="label">Total Customers</p>
+        </div>
+        <div className="stat" > 
+          <div className="stat-top">
+            <div className="metric-icon">📅</div>
+            <div className="metric-value"> 
+              <h3>{stats.totalReservations}</h3>
+            </div>
+          </div>
+          <p className="label">Total Reservations</p>
         </div>
         <div className="stat"> 
           <div className="stat-top">
