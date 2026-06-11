@@ -1,0 +1,616 @@
+import Order from "../models/Order.js";
+import Reservation from "../models/Reservation.js";
+import Restaurant from "../models/Restaurant.js";
+import User from "../models/User.js";
+import Review from "../models/Review.js";
+
+// Helper: return the restaurant for the authenticated owner.
+// Fallback: return the first restaurant if no explicit owner mapping exists.
+const getOwnerRestaurant = async (user) => {
+  let restaurant = await Restaurant.findOne({});
+  return restaurant;
+};
+
+const serializeRestaurant = (restaurant) => {
+  if (!restaurant) return null;
+  return {
+    id: restaurant._id.toString(),
+    slug: restaurant.slug,
+    name: restaurant.name,
+    emoji: restaurant.emoji,
+    imageKey: restaurant.imageKey,
+    cuisine: restaurant.cuisine || [],
+    rating: restaurant.rating,
+    eta: restaurant.eta,
+    distance: restaurant.distance,
+    priceRange: restaurant.priceRange,
+    location: restaurant.location,
+    tags: restaurant.tags || [],
+    tableOptions: restaurant.tableOptions || [],
+    active: restaurant.active,
+    menu: restaurant.menu || [],
+  };
+};
+
+const mapOrder = (order) => ({
+  id: order._id.toString(),
+  orderCode: order.orderCode,
+  restaurantId: order.restaurantId?.toString(),
+  restaurantName: order.restaurantName || (order.restaurant && order.restaurant.name) || "",
+  items: (order.items || []).map((item) => `${item.quantity} x ${item.name}`).join(", "),
+  itemsDetail: (order.items || []).map((item) => ({
+    id: item.menuItemId ? item.menuItemId.toString() : `${item.name}-${item.price}`,
+    name: item.name,
+    quantity: item.quantity,
+    price: item.price,
+    emoji: item.emoji,
+  })),
+  status: order.status,
+  total: order.total,
+  customer: order.userId?.name || order.customer || "",
+  createdAt: order.createdAt,
+});
+
+const buildOrderTimeline = (status) => {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  let label = "Order Placed";
+  if (status === "Preparing") label = "Preparing";
+  else if (status === "Ready") label = "Ready";
+  else if (status === "On the way") label = "On the way";
+  else if (status === "Delivered") label = "Delivered";
+  else if (status === "Cancelled") label = "Cancelled";
+  return { label, time, state: "completed" };
+};
+
+// GET DASHBOARD (basic summary)
+export const getRestaurantDashboard = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    if (!restaurant) return res.status(404).json({ success: false, message: "Restaurant not found" });
+
+    const allOrders = await Order.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 }).populate('userId', 'name phone address');
+    const allReservations = await Reservation.find({ restaurantId: restaurant._id });
+    const reviews = await Review.find({ restaurantId: restaurant._id });
+
+    // compute time windows
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+    const todayOrders = allOrders.filter((o) => new Date(o.createdAt) >= startOfToday);
+    const yesterdayOrders = allOrders.filter(
+      (o) => new Date(o.createdAt) >= startOfYesterday && new Date(o.createdAt) < startOfToday
+    );
+
+    const todayRevenueSum = todayOrders.reduce((s, o) => s + (Number(o.total) || 0), 0);
+    const yesterdayRevenueSum = yesterdayOrders.reduce((s, o) => s + (Number(o.total) || 0), 0);
+
+    const totalOrders = allOrders.length;
+    const activeOrders = allOrders.filter((o) => o.active && o.status !== "Delivered").length;
+    const deliveredOrders = allOrders.filter((o) => o.status === "Delivered").length;
+    const cancelledOrders = allOrders.filter((o) => o.status === "Cancelled").length;
+
+    const liveOrders = allOrders.filter((o) => o.active && o.status !== "Delivered").slice(0, 20).map(mapOrder);
+
+    const ordersByStatus = {
+      new: allOrders.filter((o) => o.status === "Confirmed").length,
+      preparing: allOrders.filter((o) => o.status === "Preparing").length,
+      ready: allOrders.filter((o) => o.status === "Ready").length,
+      delivery: allOrders.filter((o) => o.status === "On the way").length,
+    };
+
+    // top selling items
+    const itemCounts = {};
+    allOrders.forEach((order) => {
+      (order.items || []).forEach((it) => {
+        const key = it.menuItemId ? String(it.menuItemId) : `${it.name}-${it.price}`;
+        if (!itemCounts[key]) itemCounts[key] = { name: it.name, price: it.price, orders: 0, emoji: it.emoji };
+        itemCounts[key].orders += Number(it.quantity || 1);
+      });
+    });
+    const topSelling = Object.values(itemCounts).sort((a, b) => b.orders - a.orders).slice(0, 5);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        restaurant: serializeRestaurant(restaurant),
+        todayOrdersCount: todayOrders.length,
+        yesterdayOrdersCount: yesterdayOrders.length,
+        todayRevenueSum,
+        yesterdayRevenueSum,
+        totalOrders,
+        activeOrders,
+        deliveredOrders,
+        cancelledOrders,
+        liveOrders,
+        ordersByStatus,
+        topSelling,
+        revenueSeries: [],
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET ORDERS
+export const getRestaurantOrders = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const orders = await Order.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 }).populate('userId', 'name phone address');
+    res.status(200).json({ success: true, data: orders.map(mapOrder) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// ADD MENU ITEM
+export const addMenuItem = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const { name, price, category, description, emoji, popular = false, vegetarian = false } = req.body;
+    restaurant.menu.push({ name, price, category, description, emoji, popular, vegetarian });
+    await restaurant.save();
+    res.status(201).json({ success: true, data: serializeRestaurant(restaurant).menu });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// UPDATE MENU ITEM
+export const updateMenuItem = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const { itemId } = req.params;
+    const item = restaurant.menu.id(itemId);
+    if (!item) return res.status(404).json({ success: false, message: "Menu item not found" });
+    const updatable = ["name", "price", "category", "description", "emoji", "popular", "vegetarian"];
+    updatable.forEach((k) => {
+      if (req.body[k] !== undefined) item[k] = req.body[k];
+    });
+    await restaurant.save();
+    res.status(200).json({ success: true, data: serializeRestaurant(restaurant).menu });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET RESERVATIONS
+export const getRestaurantReservations = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const reservations = await Reservation.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: reservations });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET CUSTOMERS
+export const getRestaurantCustomers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const orders = await Order.find({ restaurantId: restaurant._id });
+    const userIds = [...new Set(orders.map((o) => String(o.userId)))];
+    const customers = await User.find({ _id: { $in: userIds } }).select("name email phone avatarUrl");
+    res.status(200).json({ success: true, data: customers });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET REVIEWS
+export const getRestaurantReviews = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const reviews = await Review.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: reviews });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// UPDATE ORDER STATUS (restaurant owner action)
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findOne({ _id: id, restaurantId: restaurant._id });
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+    const allowed = ["Confirmed", "Preparing", "Ready", "On the way", "Delivered", "Cancelled"];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    order.status = status;
+    order.timeline = buildOrderTimeline(status);
+    if (status === "Delivered" || status === "Cancelled") {
+      order.active = false;
+    } else {
+      order.active = true;
+    }
+    await order.save();
+
+    res.status(200).json({ success: true, data: mapOrder(order) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET FULL MENU for editing
+export const getRestaurantMenu = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    res.status(200).json({ success: true, data: serializeRestaurant(restaurant).menu });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// DELETE MENU ITEM
+export const deleteMenuItem = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const { itemId } = req.params;
+    const itemIndex = restaurant.menu.findIndex((m) => m._id.toString() === itemId);
+    if (itemIndex === -1) {
+      return res.status(404).json({ success: false, message: "Menu item not found" });
+    }
+    restaurant.menu.splice(itemIndex, 1);
+    await restaurant.save();
+    res.status(200).json({ success: true, data: serializeRestaurant(restaurant).menu });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// TOGGLE MENU ITEM STOCK
+export const toggleMenuItemStock = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    const { itemId } = req.params;
+    const item = restaurant.menu.id(itemId);
+    if (!item) return res.status(404).json({ success: false, message: "Menu item not found" });
+    item.active = item.active === false ? true : false;
+    await restaurant.save();
+    res.status(200).json({ success: true, data: serializeRestaurant(restaurant).menu });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET ANALYTICS
+export const getRestaurantAnalytics = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+
+    const allOrders = await Order.find({ restaurantId: restaurant._id });
+    const allReservations = await Reservation.find({ restaurantId: restaurant._id });
+    const reviews = await Review.find({ restaurantId: restaurant._id });
+
+    const now = new Date();
+    const startOfDayDate = (d) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+    const todayStart = startOfDayDate(now);
+    const weekStart = new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(todayStart.getTime() - 29 * 24 * 60 * 60 * 1000);
+
+    const totalRevenue = allOrders
+      .filter((o) => o.status !== "Cancelled")
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const todayRevenue = allOrders
+      .filter((o) => o.status !== "Cancelled" && new Date(o.createdAt) >= todayStart)
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const weekRevenue = allOrders
+      .filter((o) => o.status !== "Cancelled" && new Date(o.createdAt) >= weekStart)
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const monthRevenue = allOrders
+      .filter((o) => o.status !== "Cancelled" && new Date(o.createdAt) >= monthStart)
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+
+    const avgOrderValue = allOrders.length
+      ? totalRevenue / allOrders.filter((o) => o.status !== "Cancelled").length
+      : 0;
+
+    // Top items
+    const itemStats = {};
+    allOrders.forEach((ord) => {
+      ord.items.forEach((it) => {
+        if (!itemStats[it.name]) {
+          itemStats[it.name] = { name: it.name, count: 0, revenue: 0, emoji: it.emoji };
+        }
+        itemStats[it.name].count += it.quantity;
+        itemStats[it.name].revenue += it.price * it.quantity;
+      });
+    });
+    const topItems = Object.values(itemStats).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+
+    // Peak hours
+    const hourCounts = Array(24).fill(0);
+    allOrders.forEach((o) => {
+      hourCounts[new Date(o.createdAt).getHours()] += 1;
+    });
+
+    // Day-of-week series
+    const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayRevenue = Array(7).fill(0);
+    const dayOrders = Array(7).fill(0);
+    allOrders.forEach((o) => {
+      if (o.status === "Cancelled") return;
+      const d = new Date(o.createdAt);
+      const day = d.getDay();
+      dayRevenue[day] += o.total || 0;
+      dayOrders[day] += 1;
+    });
+
+    // Ratings
+    const ratingSum = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+    const ratingAvg = reviews.length ? ratingSum / reviews.length : 0;
+
+    // Recent 7 days series
+    const days = Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i * 24 * 60 * 60 * 1000));
+    const seriesByDate = {};
+    allOrders.forEach((o) => {
+      if (o.status === "Cancelled") return;
+      const d = new Date(o.createdAt);
+      d.setHours(0, 0, 0, 0);
+      const k = d.toISOString().slice(0, 10);
+      seriesByDate[k] = (seriesByDate[k] || 0) + (o.total || 0);
+    });
+    const last7Days = days.map((d) => ({
+      label: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      revenue: seriesByDate[d.toISOString().slice(0, 10)] || 0,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totals: {
+          revenue: totalRevenue,
+          todayRevenue,
+          weekRevenue,
+          monthRevenue,
+          avgOrderValue,
+          totalOrders: allOrders.length,
+          cancelledOrders: allOrders.filter((o) => o.status === "Cancelled").length,
+          deliveredOrders: allOrders.filter((o) => o.status === "Delivered").length,
+          totalCustomers: new Set(allOrders.map((o) => String(o.userId))).size,
+          totalReservations: allReservations.length,
+          totalReviews: reviews.length,
+        },
+        rating: {
+          average: Number(ratingAvg.toFixed(2)),
+          count: reviews.length,
+        },
+        topItems,
+        peakHours: hourCounts.map((count, hour) => ({ hour, count })),
+        dayRevenue: dayLabels.map((label, idx) => ({ label, revenue: dayRevenue[idx], orders: dayOrders[idx] })),
+        last7Days,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET PAYOUT SUMMARY
+export const getRestaurantPayout = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+
+    const delivered = await Order.find({ restaurantId: restaurant._id, status: "Delivered" }).sort({ createdAt: -1 });
+    const totalRevenue = delivered.reduce((s, o) => s + (o.total || 0), 0);
+
+    // Simulated deductions
+    const platformFeeRate = 0.05;
+    const platformFee = Math.round(totalRevenue * platformFeeRate);
+    const gst = Math.round(totalRevenue * 0.05);
+    const netEarnings = totalRevenue - platformFee - gst;
+
+    // Last 4 weeks
+    const now = new Date();
+    const weekStarts = Array.from({ length: 4 }, (_, i) => {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - (3 - i) * 7 - 6);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      return { start, end, label: `Week ${i + 1}` };
+    });
+
+    const weeklyBreakdown = weekStarts.map(({ start, end, label }) => {
+      const weekOrders = delivered.filter((o) => new Date(o.createdAt) >= start && new Date(o.createdAt) < end);
+      const sum = weekOrders.reduce((s, o) => s + (o.total || 0), 0);
+      const fee = Math.round(sum * platformFeeRate);
+      const tax = Math.round(sum * 0.05);
+      return {
+        label,
+        range: `${start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} - ${new Date(end.getTime() - 1).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`,
+        orders: weekOrders.length,
+        revenue: sum,
+        fee,
+        gst: tax,
+        net: sum - fee - tax,
+        status: label === "Week 1" ? "Paid" : "Pending",
+      };
+    });
+
+    // Transaction list (last few orders)
+    const transactions = delivered.slice(0, 8).map((o) => ({
+      id: o._id.toString(),
+      orderCode: o.orderCode,
+      date: o.createdAt,
+      amount: o.total || 0,
+      type: "Order earning",
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalRevenue,
+        platformFee,
+        gst,
+        netEarnings,
+        weeklyBreakdown,
+        transactions,
+        nextPayoutDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET DELIVERY LIST (orders with status of On the way / Preparing / Ready)
+export const getRestaurantDelivery = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+
+    const orders = await Order.find({
+      restaurantId: restaurant._id,
+      active: true,
+      status: { $in: ["Confirmed", "Preparing", "Ready", "On the way"] },
+    }).sort({ createdAt: 1 });
+
+    // Build delivery partner mock list
+    const partnerPool = [
+      { id: "DP-001", name: "Ravi Kumar", phone: "+91 98765 11111", vehicle: "Bike - KA 20 AB 1234" },
+      { id: "DP-002", name: "Anil Sharma", phone: "+91 98765 22222", vehicle: "Scooter - KA 20 CD 5678" },
+      { id: "DP-003", name: "Priya Nair", phone: "+91 98765 33333", vehicle: "Bike - KA 20 EF 9012" },
+      { id: "DP-004", name: "Suresh Iyer", phone: "+91 98765 44444", vehicle: "Bike - KA 20 GH 3456" },
+    ];
+
+    const deliveries = orders.map((o, idx) => {
+      const partner = partnerPool[idx % partnerPool.length];
+      return {
+        ...mapOrder(o),
+        distance: (1.5 + ((idx * 0.7) % 4)).toFixed(1) + " km",
+        partner,
+        estimatedTime: 15 + (idx * 4) + " mins",
+      };
+    });
+
+    res.status(200).json({ success: true, data: deliveries });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// GET RESTAURANT PROFILE for settings
+export const getRestaurantProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          avatarUrl: user.avatarUrl,
+        },
+        restaurant: serializeRestaurant(restaurant),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// UPDATE RESTAURANT PROFILE / SETTINGS
+export const updateRestaurantProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const restaurant = await getOwnerRestaurant(user);
+
+    const { name, phone, avatarUrl, eta, distance, priceRange, location, tags, tableOptions, cuisine, description } = req.body;
+
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    await user.save();
+
+    if (eta !== undefined) restaurant.eta = eta;
+    if (distance !== undefined) restaurant.distance = distance;
+    if (priceRange !== undefined) restaurant.priceRange = priceRange;
+    if (location !== undefined) restaurant.location = location;
+    if (Array.isArray(tags)) restaurant.tags = tags;
+    if (Array.isArray(tableOptions)) restaurant.tableOptions = tableOptions;
+    if (Array.isArray(cuisine)) restaurant.cuisine = cuisine;
+
+    await restaurant.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          avatarUrl: user.avatarUrl,
+        },
+        restaurant: serializeRestaurant(restaurant),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
