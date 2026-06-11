@@ -42,9 +42,9 @@ function RestaurantSidebar({ name, status = "Open" }) {
   return (
     <aside className="rh-sidebar">
       <div className="rh-brand">
-        <div className="rh-logo">FH</div>
+        <div className="rh-logo">FHS</div>
         <div>
-          <strong>Green Bowl Cafe</strong>
+          <strong>Green Bowl Cafe.</strong>
         </div>
       </div>
 
