@@ -5,6 +5,12 @@ function TotalCustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const formatMoney = (value) => {
+    const n = Number(value || 0);
+    return `₹${n.toLocaleString()}`;
+  };
+
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -64,7 +70,8 @@ function TotalCustomersPage() {
             {customers.map(cust => (
               <div className="order-item" key={cust.id} style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
                 <div style={{ flex: "0 0 50px", height: "50px", borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", color: "#475569" }}>
-                  {cust.name.charAt(0).toUpperCase()}
+                    {(cust?.name?.charAt?.(0)?.toUpperCase?.() || "?")}
+
                 </div>
                 
                 <div className="order-left" style={{ flex: "1 1 200px" }}>
@@ -83,8 +90,9 @@ function TotalCustomersPage() {
                 
                 <div className="order-right" style={{ flex: "0 0 150px", textAlign: "right" }}>
                   <div style={{ fontSize: "16px", fontWeight: "bold", color: "#4f46e5" }}>
-                    ₹{cust.totalSpent.toLocaleString()}
+                    {formatMoney(cust.totalSpent)}
                   </div>
+
                   <div style={{ marginTop: "4px", fontSize: "13px", color: "#64748b" }}>
                     {cust.totalOrders} order{cust.totalOrders !== 1 ? 's' : ''}
                   </div>
