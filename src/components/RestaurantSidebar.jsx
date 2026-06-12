@@ -44,7 +44,7 @@ function RestaurantSidebar({ name, status = "Open" }) {
       <div className="rh-brand">
         <div className="rh-logo">FH</div>
         <div>
-          <strong>Green Bowl Cafe</strong>
+          <strong>GREEN BOWL CAFES</strong>
         </div>
       </div>
 
@@ -76,7 +76,7 @@ function RestaurantSidebar({ name, status = "Open" }) {
         <div className="gift">🎁</div>
         <div className="refer-body">
           <div className="refer-title">Refer & Earn</div>
-          <div className="muted">Invite friends and earn ₹500 extra</div>
+          <div className="muted">Invite friends and earn ₹1000 extra</div>
         </div>
       </div>
     </aside>
