@@ -1,5 +1,24 @@
 import { useState, useEffect } from "react";
 
+const renderEmojiOrImage = (emojiStr) => {
+  if (!emojiStr) return "🍽️";
+  if (emojiStr.startsWith("http://") || emojiStr.startsWith("https://") || emojiStr.startsWith("/")) {
+    return (
+      <img
+        src={emojiStr}
+        alt="Menu item"
+        style={{
+          width: "48px",
+          height: "48px",
+          objectFit: "cover",
+          borderRadius: "8px",
+        }}
+      />
+    );
+  }
+  return emojiStr;
+};
+
 function MenuManagementPage() {
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +160,9 @@ function MenuManagementPage() {
             <div key={item.id} className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px", borderTop: item.active ? "4px solid #10b981" : "4px solid #cbd5e1" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <div style={{ fontSize: "32px" }}>{item.emoji || "🍽️"}</div>
+                  <div style={{ width: "48px", height: "48px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px" }}>
+                    {renderEmojiOrImage(item.emoji)}
+                  </div>
                   <div>
                     <h3 style={{ margin: 0, color: "#0f172a", fontSize: "18px" }}>{item.name}</h3>
                     <p style={{ margin: 0, color: "#64748b", fontSize: "14px" }}>{item.category || "Uncategorized"}</p>

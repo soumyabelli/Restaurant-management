@@ -76,15 +76,33 @@ const mapOrder = (order) => ({
   createdAt: order.createdAt,
 });
 
-const buildOrderTimeline = (status) => {
-  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  let label = "Order Placed";
-  if (status === "Preparing") label = "Preparing";
-  else if (status === "Ready") label = "Ready";
-  else if (status === "On the way") label = "On the way";
-  else if (status === "Delivered") label = "Delivered";
-  else if (status === "Cancelled") label = "Cancelled";
-  return { label, time, state: "completed" };
+const buildTimeline = (status) => {
+  const currentStatus = String(status || "confirmed").toLowerCase();
+  const currentIndex =
+    currentStatus === "delivered"
+      ? 3
+      : currentStatus === "on the way"
+        ? 2
+        : currentStatus === "preparing" || currentStatus === "ready"
+          ? 1
+          : 0;
+
+  const steps = [
+    { label: "Confirmed", time: "Now" },
+    { label: "Preparing", time: "10 mins" },
+    { label: "On the Way", time: "25 mins" },
+    { label: "Delivered", time: "---" },
+  ];
+
+  return steps.map((step, index) => ({
+    ...step,
+    state:
+      index < currentIndex
+        ? "done"
+        : index === currentIndex
+          ? "current"
+          : "upcoming",
+  }));
 };
 
 // GET DASHBOARD (basic summary)
@@ -324,13 +342,20 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     order.status = status;
-    order.timeline = buildOrderTimeline(status);
+    order.timeline = buildTimeline(status);
     if (status === "Delivered" || status === "Cancelled") {
       order.active = false;
     } else {
       order.active = true;
     }
     await order.save();
+
+    // Emit live socket status update
+    const io = req.app.get("io");
+    if (io) {
+      io.to(id.toString()).emit("orderStatusUpdated", order);
+      console.log(`Socket emit orderStatusUpdated for order ${id} status ${status}`);
+    }
 
     res.status(200).json({ success: true, data: mapOrder(order) });
   } catch (error) {
@@ -581,34 +606,41 @@ export const getRestaurantPayout = async (req, res) => {
   }
 };
 
-// GET DELIVERY LIST (orders with status of On the way / Preparing / Ready)
+// GET DELIVERY LIST (orders with status of Confirmed / Preparing / Ready / On the way)
 export const getRestaurantDelivery = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     const restaurant = await getOwnerRestaurant(user);
 
+    // Find all active delivery orders and populate rider/customer details
     const orders = await Order.find({
       restaurantId: restaurant._id,
       active: true,
       status: { $in: ["Confirmed", "Preparing", "Ready", "On the way"] },
-    }).sort({ createdAt: 1 });
-
-    // Build delivery partner mock list
-    const partnerPool = [
-      { id: "DP-001", name: "Ravi Kumar", phone: "+91 98765 11111", vehicle: "Bike - KA 20 AB 1234" },
-      { id: "DP-002", name: "Anil Sharma", phone: "+91 98765 22222", vehicle: "Scooter - KA 20 CD 5678" },
-      { id: "DP-003", name: "Priya Nair", phone: "+91 98765 33333", vehicle: "Bike - KA 20 EF 9012" },
-      { id: "DP-004", name: "Suresh Iyer", phone: "+91 98765 44444", vehicle: "Bike - KA 20 GH 3456" },
-    ];
+    })
+    .sort({ createdAt: 1 })
+    .populate("userId", "name phone address")
+    .populate("deliveryGuyId", "name phone");
 
     const deliveries = orders.map((o, idx) => {
-      const partner = partnerPool[idx % partnerPool.length];
+      const partner = o.deliveryGuyId
+        ? {
+            id: o.deliveryGuyId._id.toString(),
+            name: o.deliveryGuyId.name,
+            phone: o.deliveryGuyId.phone || "+91 98765 00000",
+            vehicle: "Rider Assigned",
+          }
+        : null;
+
+      // Map details dynamically
       return {
         ...mapOrder(o),
+        customerPhone: o.userId?.phone || "",
+        customerAddress: o.address || o.userId?.address || "",
         distance: (1.5 + ((idx * 0.7) % 4)).toFixed(1) + " km",
         partner,
-        estimatedTime: 15 + (idx * 4) + " mins",
+        estimatedTime: partner ? (10 + (idx * 3)) + " mins" : "Waiting for rider...",
       };
     });
 
