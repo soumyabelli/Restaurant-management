@@ -1,4 +1,5 @@
-the in import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+
 
 function ReviewsAndRatingsPage() {
   const [reviews, setReviews] = useState([]);

@@ -1,4 +1,4 @@
- restaurantimport { useState, useEffect } from "react";
+ import { useState, useEffect } from "react";
 
 function TotalCustomersPage() {
   const [customers, setCustomers] = useState([]);
