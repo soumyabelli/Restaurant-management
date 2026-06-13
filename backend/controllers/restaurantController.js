@@ -236,15 +236,60 @@ export const getRestaurantCustomers = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     const restaurant = await getOwnerRestaurant(user);
-    const orders = await Order.find({ restaurantId: restaurant._id });
-    const userIds = [...new Set(orders.map((o) => String(o.userId)))];
+
+    const orders = await Order.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 });
+
+    const userIds = [...new Set((orders || []).map((o) => String(o.userId)))];
+    if (!userIds.length) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    // Compute per-customer aggregates from Order collection
+    const byCustomer = new Map();
+    for (const ord of orders) {
+      const uid = String(ord.userId);
+      if (!byCustomer.has(uid)) {
+        byCustomer.set(uid, {
+          totalOrders: 0,
+          totalSpent: 0,
+          lastOrderDate: null,
+        });
+      }
+
+      const entry = byCustomer.get(uid);
+      entry.totalOrders += 1;
+      entry.totalSpent += Number(ord.total || 0);
+      // orders are sorted desc, so first seen is latest
+      if (!entry.lastOrderDate) entry.lastOrderDate = ord.createdAt;
+    }
+
     const customers = await User.find({ _id: { $in: userIds } }).select("name email phone avatarUrl");
-    res.status(200).json({ success: true, data: customers });
+
+    const payload = customers.map((c) => {
+      const agg = byCustomer.get(String(c._id)) || {
+        totalOrders: 0,
+        totalSpent: 0,
+        lastOrderDate: null,
+      };
+      return {
+        id: c._id.toString(),
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        avatarUrl: c.avatarUrl,
+        totalOrders: agg.totalOrders,
+        totalSpent: agg.totalSpent,
+        lastOrderDate: agg.lastOrderDate,
+      };
+    });
+
+    res.status(200).json({ success: true, data: payload });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
 
 // GET REVIEWS
 export const getRestaurantReviews = async (req, res) => {

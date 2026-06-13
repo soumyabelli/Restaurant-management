@@ -2,6 +2,8 @@
 
 function TotalCustomersPage() {
   const [customers, setCustomers] = useState([]);
+  const [stats, setStats] = useState({ totalOrders: 0 });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -93,6 +95,7 @@ function TotalCustomersPage() {
                   </div>
 
                 </div>
+
               </div>
             ))}
           </div>
