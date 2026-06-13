@@ -2458,7 +2458,28 @@ function CustomerDashboard() {
               <button type="button" className="topbar-icon-button" onClick={() => setActiveSection("profile")}>
                 <AiOutlineUser />
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('user');
+                  navigate('/login');
+                }}
+                style={{
+                  marginLeft: 10,
+                  border: '1px solid #e2e8f0',
+                  background: '#fff',
+                  borderRadius: 12,
+                  padding: '8px 12px',
+                  fontWeight: 800,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                }}
+              >
+                Logout
+              </button>
             </div>
+
           </header>
         ) : null}
 

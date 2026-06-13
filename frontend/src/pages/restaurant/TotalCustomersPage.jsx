@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+ import { useState, useEffect } from "react";
 
 function TotalCustomersPage() {
   const [customers, setCustomers] = useState([]);
+  const [stats, setStats] = useState({ totalOrders: 0 });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -83,15 +85,17 @@ function TotalCustomersPage() {
                 
                 <div className="order-right" style={{ flex: "0 0 150px", textAlign: "right" }}>
                   <div style={{ fontSize: "16px", fontWeight: "bold", color: "#4f46e5" }}>
-                    ₹{cust.totalSpent.toLocaleString()}
+                    ₹{Number(cust.totalSpent || 0).toLocaleString()}
                   </div>
                   <div style={{ marginTop: "4px", fontSize: "13px", color: "#64748b" }}>
-                    {cust.totalOrders} order{cust.totalOrders !== 1 ? 's' : ''}
+                    {Number(cust.totalOrders || 0)} order{Number(cust.totalOrders || 0) !== 1 ? 's' : ''}
                   </div>
                   <div style={{ marginTop: "6px", fontSize: "11px", color: "#94a3b8" }}>
-                    Last Order: {new Date(cust.lastOrderDate).toLocaleDateString()}
+                    Last Order: {cust.lastOrderDate ? new Date(cust.lastOrderDate).toLocaleDateString() : "-"}
                   </div>
+
                 </div>
+
               </div>
             ))}
           </div>

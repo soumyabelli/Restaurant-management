@@ -87,8 +87,9 @@ function TotalReservationsPage() {
                 
                 <div className="order-right" style={{ flex: "0 0 150px", textAlign: "right", justifyContent: "center" }}>
                   <div style={{ marginBottom: "8px", fontSize: "12px", color: "#64748b" }}>
-                    ID: {res.bookingCode || res.id.slice(-6).toUpperCase()}
+                    ID: {res.bookingCode || (res.id ? res.id.slice(-6).toUpperCase() : "-")}
                   </div>
+
                   <div>
                     <span className="tag" style={{ 
                       background: res.status === "Confirmed" ? "#ecfdf5" : res.status === "Cancelled" ? "#fef2f2" : "#eef2ff", 
