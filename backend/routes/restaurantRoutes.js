@@ -9,7 +9,8 @@ import {
   getRestaurantReservations,
   getRestaurantCustomers,
   getRestaurantReviews,
-  updateOrderStatus
+  updateOrderStatus,
+  getRestaurantDelivery
 } from "../controllers/restaurantController.js";
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.get("/dashboard", getRestaurantDashboard);
 router.get("/menu", getRestaurantMenu);
 router.get("/orders", getRestaurantOrders);
 router.put("/orders/:id/status", updateOrderStatus);
+router.get("/delivery", getRestaurantDelivery);
 router.post("/menu", addMenuItem);
 router.put("/menu/:itemId", updateMenuItem);
 router.get("/reservations", getRestaurantReservations);

@@ -34,6 +34,7 @@ import {
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import api from "../../api/client";
+import { socket } from "../../api/socket";
 import CustomerFlowDrawer from "./CustomerFlowDrawer";
 import heroImage from "../../assets/food2.png";
 import cardFoodImage from "../../assets/food.png";
@@ -2322,6 +2323,47 @@ function CustomerDashboard() {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    const activeOrderId = dashboardData?.activeOrder?.id;
+    if (activeOrderId) {
+      socket.connect();
+      socket.emit("joinOrder", activeOrderId);
+
+      const handleStatusUpdate = (updatedOrder) => {
+        console.log("Received live order status update:", updatedOrder);
+        setDashboardData((prev) => {
+          if (!prev) return prev;
+
+          const updatedActive = {
+            ...prev.activeOrder,
+            status: updatedOrder.status,
+            timeline: updatedOrder.timeline,
+            active: updatedOrder.active,
+          };
+
+          const updatedOrders = (prev.orders || []).map((o) =>
+            o.id === (updatedOrder._id || updatedOrder.id)?.toString()
+              ? { ...o, status: updatedOrder.status, timeline: updatedOrder.timeline, active: updatedOrder.active }
+              : o
+          );
+
+          return {
+            ...prev,
+            activeOrder: updatedActive,
+            orders: updatedOrders,
+          };
+        });
+      };
+
+      socket.on("orderStatusUpdated", handleStatusUpdate);
+
+      return () => {
+        socket.off("orderStatusUpdated", handleStatusUpdate);
+        socket.disconnect();
+      };
+    }
+  }, [dashboardData?.activeOrder?.id]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

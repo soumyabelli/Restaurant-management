@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { FiWallet, FiArrowUpRight, FiArrowDownLeft, FiPlus, FiArrowRight } from "react-icons/fi";
+import { FiArrowUpRight, FiArrowDownLeft, FiPlus, FiArrowRight } from "react-icons/fi";
+import { AiOutlineWallet } from "react-icons/ai";
 import "../../styles/restaurant-dashboard.css";
 
 const fmtMoney = (v) => `₹${Number(v || 0).toFixed(0)}`;
@@ -127,7 +128,7 @@ export default function Wallet() {
         <div className="card" style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", color: "white", padding: "24px", borderRadius: "16px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", boxShadow: "0 10px 25px -5px rgba(15,23,42,0.3)" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
-              <FiWallet size={18} />
+              <AiOutlineWallet size={18} />
               <span style={{ fontSize: "14px", fontWeight: "600" }}>Current Wallet Balance</span>
             </div>
             <h1 style={{ fontSize: "40px", fontWeight: "800", margin: "12px 0 0 0" }}>{fmtMoney(balance)}</h1>

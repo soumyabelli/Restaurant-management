@@ -1,50 +1,36 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { FiWallet, FiArrowUpRight, FiArrowDownLeft, FiPlus, FiArrowRight } from "react-icons/fi";
+import { FiArrowUpRight, FiArrowDownLeft, FiPlus, FiArrowRight, FiRefreshCw } from "react-icons/fi";
+import { AiOutlineWallet } from "react-icons/ai";
+import api from "../../api/client";
 import "../../styles/restaurant-dashboard.css";
 
 const fmtMoney = (v) => `₹${Number(v || 0).toFixed(0)}`;
 
 export default function Wallet() {
   const [user, setUser] = useState(null);
-  const [balance, setBalance] = useState(2450);
+  const [balance, setBalance] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cashoutAmount, setCashoutAmount] = useState("");
   const [method, setMethod] = useState("upi");
   const [upiId, setUpiId] = useState("");
   const [bankAcc, setBankAcc] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [transactions, setTransactions] = useState([
-    {
-      id: "tx1",
-      type: "credit",
-      title: "Delivery Earnings - #FD1001",
-      amount: 112,
-      date: "Today, 02:40 PM",
-    },
-    {
-      id: "tx2",
-      type: "credit",
-      title: "Delivery Earnings - #FD1002",
-      amount: 92,
-      date: "Yesterday, 07:15 PM",
-    },
-    {
-      id: "tx3",
-      type: "debit",
-      title: "Self Cash Out to UPI",
-      amount: 1200,
-      date: "10 Jun 2026, 11:00 AM",
-    },
-    {
-      id: "tx4",
-      type: "credit",
-      title: "Daily Target Incentive",
-      amount: 150,
-      date: "09 Jun 2026, 11:30 PM",
-    },
-  ]);
+  const fetchWallet = async () => {
+    try {
+      const res = await api.get("/delivery/wallet");
+      setBalance(res.data.walletBalance ?? 0);
+      setTransactions(res.data.transactions || []);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load wallet data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -52,14 +38,16 @@ export default function Wallet() {
       try {
         const u = JSON.parse(storedUser);
         setUser(u);
-        setBalance(u.walletBalance ?? 2450);
+        setUpiId(u.upiId || "");
+        setBankAcc(u.bankAcc || "");
       } catch (e) {
         console.error(e);
       }
     }
+    fetchWallet();
   }, []);
 
-  const handleCashoutSubmit = (e) => {
+  const handleCashoutSubmit = async (e) => {
     e.preventDefault();
     const amt = Number(cashoutAmount);
 
@@ -85,33 +73,53 @@ export default function Wallet() {
 
     setProcessing(true);
 
-    setTimeout(() => {
-      const newBalance = balance - amt;
-      setBalance(newBalance);
+    try {
+      const payload = {
+        amount: amt,
+        method,
+        upiId: method === "upi" ? upiId : undefined,
+        bankAcc: method === "bank" ? bankAcc : undefined,
+      };
 
-      // Save to localStorage so it persists across sidebar metrics
+      const res = await api.post("/delivery/wallet/withdraw", payload);
+      setBalance(res.data.walletBalance);
+      
+      // Update local storage user details to keep it sync'd
       if (user) {
-        const updatedUser = { ...user, walletBalance: newBalance };
+        const updatedUser = { ...user, walletBalance: res.data.walletBalance };
         localStorage.setItem("user", JSON.stringify(updatedUser));
       }
 
-      // Add to transactions list
-      const newTx = {
-        id: "tx_" + Date.now(),
-        type: "debit",
-        title: `Self Cash Out (${method === "upi" ? "UPI" : "Bank"})`,
-        amount: amt,
-        date: "Just now",
-      };
-
-      setTransactions([newTx, ...transactions]);
       toast.success(`Successfully cashed out ${fmtMoney(amt)}!`);
-      
-      setProcessing(false);
       setIsModalOpen(false);
       setCashoutAmount("");
-    }, 2000);
+      
+      // Refresh transactions
+      fetchWallet();
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Cashout failed");
+    } finally {
+      setProcessing(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="delivery-wallet-page" style={{ padding: "40px", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+        <div style={{ textAlign: "center" }}>
+          <FiRefreshCw className="spin" style={{ fontSize: "30px", marginBottom: "12px", animation: "spin_loader 1s linear infinite", color: "#6366f1" }} />
+          <h3>Loading Wallet...</h3>
+        </div>
+        <style>{`
+          @keyframes spin_loader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="delivery-wallet-page">
@@ -127,7 +135,7 @@ export default function Wallet() {
         <div className="card" style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", color: "white", padding: "24px", borderRadius: "16px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", boxShadow: "0 10px 25px -5px rgba(15,23,42,0.3)" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8" }}>
-              <FiWallet size={18} />
+              <AiOutlineWallet size={18} />
               <span style={{ fontSize: "14px", fontWeight: "600" }}>Current Wallet Balance</span>
             </div>
             <h1 style={{ fontSize: "40px", fontWeight: "800", margin: "12px 0 0 0" }}>{fmtMoney(balance)}</h1>
@@ -180,51 +188,67 @@ export default function Wallet() {
       <div className="card" style={{ background: "white", padding: "20px", borderRadius: "12px" }}>
         <h3 style={{ margin: "0 0 16px 0" }}>Transaction History</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {transactions.map((tx) => (
-            <div
-              key={tx.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                border: "1px solid #f1f5f9",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: tx.type === "credit" ? "#ecfdf5" : "#fef2f2",
-                    color: tx.type === "credit" ? "#10b981" : "#ef4444",
-                  }}
-                >
-                  {tx.type === "credit" ? <FiArrowDownLeft size={20} /> : <FiArrowUpRight size={20} />}
+          {transactions.map((tx) => {
+            const formattedDate = tx.createdAt
+              ? new Date(tx.createdAt).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : tx.date || "Just now";
+
+            return (
+              <div
+                key={tx._id || tx.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid #f1f5f9",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: tx.type === "credit" ? "#ecfdf5" : "#fef2f2",
+                      color: tx.type === "credit" ? "#10b981" : "#ef4444",
+                    }}
+                  >
+                    {tx.type === "credit" ? <FiArrowDownLeft size={20} /> : <FiArrowUpRight size={20} />}
+                  </div>
+                  <div>
+                    <strong style={{ display: "block", color: "#0f172a" }}>{tx.title}</strong>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>{formattedDate}</span>
+                  </div>
                 </div>
                 <div>
-                  <strong style={{ display: "block", color: "#0f172a" }}>{tx.title}</strong>
-                  <span style={{ fontSize: "12px", color: "#64748b" }}>{tx.date}</span>
+                  <strong
+                    style={{
+                      fontSize: "16px",
+                      color: tx.type === "credit" ? "#10b981" : "#ef4444",
+                    }}
+                  >
+                    {tx.type === "credit" ? "+" : "-"}
+                    {fmtMoney(tx.amount)}
+                  </strong>
                 </div>
               </div>
-              <div>
-                <strong
-                  style={{
-                    fontSize: "16px",
-                    color: tx.type === "credit" ? "#10b981" : "#ef4444",
-                  }}
-                >
-                  {tx.type === "credit" ? "+" : "-"}
-                  {fmtMoney(tx.amount)}
-                </strong>
-              </div>
+            );
+          })}
+          {transactions.length === 0 && (
+            <div style={{ textAlign: "center", color: "#94a3b8", padding: "16px 0" }}>
+              No transactions recorded yet.
             </div>
-          ))}
+          )}
         </div>
       </div>
 

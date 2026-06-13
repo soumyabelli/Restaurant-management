@@ -58,9 +58,35 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/restaurant", restaurantRoutes);
 app.use("/api/delivery", deliveryRoutes);
 
+import { createServer } from "http";
+import { Server } from "socket.io";
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
+  socket.on("joinOrder", (orderId) => {
+    socket.join(orderId);
+    console.log(`Socket ${socket.id} joined order room: ${orderId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
+app.set("io", io);
+
 // Server
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
