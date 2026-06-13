@@ -5,11 +5,29 @@ import User from "../models/User.js";
 import Review from "../models/Review.js";
 
 // Helper: return the restaurant for the authenticated owner.
-// Fallback: return the first restaurant if no explicit owner mapping exists.
-const getOwnerRestaurant = async (user) => {
-  let restaurant = await Restaurant.findOne({});
-  return restaurant;
+// NOTE: Current schema does not store an explicit owner->restaurant mapping.
+// We therefore select restaurant deterministically using req.user.restaurantId (if your auth middleware attaches it)
+// or req.query.restaurantId / req.body.restaurantId.
+// Fallback: first restaurant (old behavior).
+const getOwnerRestaurant = async (req, user) => {
+  const restaurantId =
+    req?.query?.restaurantId ||
+    req?.body?.restaurantId ||
+    user?.restaurantId ||
+    null;
+
+  if (restaurantId) {
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (restaurant) return restaurant;
+  }
+
+  // Demo fallback: map demo restaurant user to the correct Restaurant document.
+  // This keeps dashboard + order details consistent even without owner->restaurant mapping in schema.
+  const fallbackRestaurant = await Restaurant.findOne({ slug: "green-bowl-cafe" });
+  return fallbackRestaurant || Restaurant.findOne({});
 };
+
+
 
 const serializeRestaurant = (restaurant) => {
   if (!restaurant) return null;
@@ -67,8 +85,9 @@ export const getRestaurantDashboard = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
-    const restaurant = await getOwnerRestaurant(user);
+    const restaurant = await getOwnerRestaurant(req, user);
     if (!restaurant) return res.status(404).json({ success: false, message: "Restaurant not found" });
+
 
     const allOrders = await Order.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 }).populate('userId', 'name phone address');
     const allReservations = await Reservation.find({ restaurantId: restaurant._id });
@@ -143,8 +162,9 @@ export const getRestaurantOrders = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
-    const restaurant = await getOwnerRestaurant(user);
+    const restaurant = await getOwnerRestaurant(req, user);
     const orders = await Order.find({ restaurantId: restaurant._id }).sort({ createdAt: -1 }).populate('userId', 'name phone address');
+
     res.status(200).json({ success: true, data: orders.map(mapOrder) });
   } catch (error) {
     console.error(error);
@@ -157,7 +177,7 @@ export const addMenuItem = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
-    const restaurant = await getOwnerRestaurant(user);
+    const restaurant = await getOwnerRestaurant(req, user);
     const { name, price, category, description, emoji, popular = false, vegetarian = false } = req.body;
     restaurant.menu.push({ name, price, category, description, emoji, popular, vegetarian });
     await restaurant.save();
