@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+the in import { useState, useEffect } from "react";
 
 function ReviewsAndRatingsPage() {
   const [reviews, setReviews] = useState([]);
@@ -92,6 +92,9 @@ function ReviewsAndRatingsPage() {
                   {review.customerAvatar ? (
                     <img src={review.customerAvatar} alt="avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
                   ) : (
+                    (review.customerName || "?").charAt(0).toUpperCase()
+                  )}
+
                     review.customerName.charAt(0).toUpperCase()
                   )}
                 </div>

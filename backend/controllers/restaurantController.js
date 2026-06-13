@@ -9,12 +9,19 @@ import Review from "../models/Review.js";
 // We therefore select restaurant deterministically using req.user.restaurantId (if your auth middleware attaches it)
 // or req.query.restaurantId / req.body.restaurantId.
 // Fallback: first restaurant (old behavior).
-const getOwnerRestaurant = async (req, user) => {
+// Supports both call styles:
+// - getOwnerRestaurant(req, user)
+// - getOwnerRestaurant(user)
+const getOwnerRestaurant = async (arg1, arg2) => {
+  const req = arg2 ? arg1 : null;
+  const user = arg2 ? arg2 : arg1;
+
   const restaurantId =
     req?.query?.restaurantId ||
     req?.body?.restaurantId ||
     user?.restaurantId ||
     null;
+
 
   if (restaurantId) {
     const restaurant = await Restaurant.findById(restaurantId);
