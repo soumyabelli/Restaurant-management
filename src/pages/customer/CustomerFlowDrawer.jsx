@@ -75,6 +75,8 @@ function CustomerFlowDrawer({
           { label: "UPI", type: "upi", provider: "PhonePe / GPay" },
           { label: "Wallet", type: "wallet", provider: "FoodieHub Wallet" },
           { label: "Cash", type: "cash", provider: "Pay on delivery" },
+          { label: "Card", type: "card", provider: "Visa, Mastercard, RuPay" },
+          { label: "Net Banking", type: "netbanking", provider: "SBI, HDFC, ICICI, etc." },
         ],
     [user]
   );

@@ -124,6 +124,20 @@ export default function RestaurantCheckoutPage() {
       subtitle: "Use account balance",
       helper: "Fast checkout",
     },
+    {
+      key: "card",
+      icon: "💳",
+      title: "Credit/Debit Card",
+      subtitle: "Visa, Mastercard, RuPay",
+      helper: "Secure Gateway",
+    },
+    {
+      key: "netbanking",
+      icon: "🏦",
+      title: "Net Banking",
+      subtitle: "SBI, HDFC, ICICI, Axis",
+      helper: "Bank Transfer",
+    },
   ];
 
   const placeOrder = async () => {
@@ -222,25 +236,130 @@ export default function RestaurantCheckoutPage() {
               <h2>Payment method</h2>
               <div className="payment-opts">
                 {paymentOptions.map((option) => (
-                  <label
-                    key={option.key}
-                    className={`pay-opt ${paymentMethod === option.key ? "is-active" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value={option.key}
-                      checked={paymentMethod === option.key}
-                      onChange={() => setPaymentMethod(option.key)}
-                    />
-                    <span className="pay-opt__body">
-                      <strong>
-                        <span className="pay-opt__icon">{option.icon}</span> {option.title}
-                      </strong>
-                      <small>{option.subtitle}</small>
-                    </span>
-                    <span className="pay-opt__chip">{option.helper}</span>
-                  </label>
+                  <div key={option.key} style={{ marginBottom: "8px" }}>
+                    <label
+                      className={`pay-opt ${paymentMethod === option.key ? "is-active" : ""}`}
+                      onClick={() => setPaymentMethod(option.key)}
+                      style={{ cursor: "pointer", display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value={option.key}
+                          checked={paymentMethod === option.key}
+                          onChange={() => setPaymentMethod(option.key)}
+                          style={{ pointerEvents: "none" }}
+                        />
+                        <span className="pay-opt__body">
+                          <strong>
+                            <span className="pay-opt__icon">{option.icon}</span> {option.title}
+                          </strong>
+                          <small>{option.subtitle}</small>
+                        </span>
+                      </div>
+                      <span className="pay-opt__chip">{option.helper}</span>
+                    </label>
+
+                    {/* Animated Detail Form Sub-panel */}
+                    <div
+                      className={`pay-details-panel ${paymentMethod === option.key ? "expanded" : ""}`}
+                      style={{
+                        maxHeight: paymentMethod === option.key ? "200px" : "0",
+                        opacity: paymentMethod === option.key ? "1" : "0",
+                        overflow: "hidden",
+                        transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease",
+                        background: "#f8fafc",
+                        border: paymentMethod === option.key ? "1px solid #e2e8f0" : "1px solid transparent",
+                        borderTop: "none",
+                        borderRadius: "0 0 12px 12px",
+                        padding: paymentMethod === option.key ? "12px 16px" : "0 16px",
+                        marginTop: "-2px",
+                      }}
+                    >
+                      {option.key === "upi" && (
+                        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "4px" }}>Enter UPI ID</label>
+                            <input
+                              type="text"
+                              placeholder="username@upi"
+                              style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div style={{ width: "40px", height: "40px", background: "#fff", border: "1px solid #cbd5e1", borderRadius: "6px", display: "flex", alignItems: "center", justify_content: "center", fontSize: "20px", display: "grid", placeItems: "center" }}>
+                            📱
+                          </div>
+                        </div>
+                      )}
+
+                      {option.key === "cash" && (
+                        <div style={{ fontSize: "13px", color: "#475569", display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "18px" }}>🛵</span>
+                          <span>No prepay required! Cash/Card will be collected at your doorstep by our rider.</span>
+                        </div>
+                      )}
+
+                      {option.key === "wallet" && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+                          <div>
+                            <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>Available balance</div>
+                            <div style={{ fontSize: "12px", color: "#64748b" }}>Fastest checkout option</div>
+                          </div>
+                          <span style={{ fontWeight: "800", color: "#10b981", fontSize: "16px" }}>₹450</span>
+                        </div>
+                      )}
+
+                      {option.key === "card" && (
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "8px" }}>
+                          <div style={{ gridColumn: "span 3" }}>
+                            <label style={{ fontSize: "10px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "2px" }}>Card Number</label>
+                            <input
+                              type="text"
+                              placeholder="•••• •••• •••• ••••"
+                              style={{ width: "100%", padding: "6px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div style={{ gridColumn: "span 2" }}>
+                            <label style={{ fontSize: "10px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "2px" }}>Expiry (MM/YY)</label>
+                            <input
+                              type="text"
+                              placeholder="MM/YY"
+                              style={{ width: "100%", padding: "6px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: "10px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "2px" }}>CVV</label>
+                            <input
+                              type="password"
+                              placeholder="•••"
+                              style={{ width: "100%", padding: "6px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {option.key === "netbanking" && (
+                        <div>
+                          <label style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "4px" }}>Select Bank</label>
+                          <select
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", background: "#fff" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option>SBI - State Bank of India</option>
+                            <option>HDFC Bank</option>
+                            <option>ICICI Bank</option>
+                            <option>Axis Bank</option>
+                            <option>Kotak Mahindra Bank</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -363,6 +482,8 @@ export default function RestaurantCheckoutPage() {
           border-color:#1d4ed8;
           background:#eff6ff;
           box-shadow:inset 0 0 0 1px #1d4ed8;
+          border-bottom-left-radius: 0px !important;
+          border-bottom-right-radius: 0px !important;
         }
         .pay-opt__body{display:flex;flex-direction:column;gap:2px;}
         .pay-opt__body strong{font-size:14px;}
