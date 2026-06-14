@@ -34,9 +34,9 @@ const buildTimeline = (status) => {
 
 export const getAvailableOrders = async (req, res) => {
   try {
-    // Delivery guys can see orders that are "Ready" and not yet assigned
+    // Delivery guys can see orders that are "Confirmed", "Preparing", or "Ready" and not yet assigned
     const orders = await Order.find({
-      status: "Ready",
+      status: { $in: ["Confirmed", "Preparing", "Ready"] },
       deliveryGuyId: null,
       active: true,
     })
@@ -83,6 +83,11 @@ export const acceptOrder = async (req, res) => {
 
     order.deliveryGuyId = deliveryGuyId;
     await order.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("orderStatusUpdated", order);
+    }
 
     res.status(200).json({ message: "Order accepted successfully", order });
   } catch (error) {

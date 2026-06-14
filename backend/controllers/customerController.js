@@ -974,6 +974,15 @@ export const createOrder = async (req, res) => {
       active: true,
     });
 
+    const io = req.app.get("io");
+    if (io) {
+      const populatedOrder = await Order.findById(order._id)
+        .populate("userId", "name phone address")
+        .populate("restaurantId", "name address");
+      io.emit("orderCreated", populatedOrder);
+      console.log("Socket emit orderCreated:", order._id);
+    }
+
     const rewardPoints = await addRewardPoints(user, total);
 
     await createNotification({

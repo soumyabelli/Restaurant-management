@@ -403,6 +403,7 @@ export const updateOrderStatus = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       io.to(id.toString()).emit("orderStatusUpdated", order);
+      io.emit("orderStatusUpdated", order);
       console.log(`Socket emit orderStatusUpdated for order ${id} status ${status}`);
     }
 
