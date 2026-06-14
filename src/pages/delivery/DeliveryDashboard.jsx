@@ -10,6 +10,62 @@ function fmtMoney(v) {
   return `₹${n.toFixed(0)}`;
 }
 
+const getBezierPoint = (t, p0, p1, p2, p3) => {
+  const oneMinusT = 1 - t;
+  const mt2 = oneMinusT * oneMinusT;
+  const mt3 = mt2 * oneMinusT;
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  return {
+    x: mt3 * p0.x + 3 * mt2 * t * p1.x + 3 * oneMinusT * t2 * p2.x + t3 * p3.x,
+    y: mt3 * p0.y + 3 * mt2 * t * p1.y + 3 * oneMinusT * t2 * p2.y + t3 * p3.y
+  };
+};
+
+const getRoutePoint = (t) => {
+  const clampedT = Math.max(0, Math.min(1, t));
+  const p0 = { x: 40, y: 180 };
+  const p1 = { x: 100, y: 40 };
+  const p2 = { x: 200, y: 200 };
+  const p3 = { x: 260, y: 60 };
+
+  const pt = getBezierPoint(clampedT, p0, p1, p2, p3);
+  
+  // Estimate tangent
+  const delta = 0.01;
+  const nextT = Math.min(1, clampedT + delta);
+  const prevT = Math.max(0, clampedT - delta);
+  const ptNext = getBezierPoint(nextT, p0, p1, p2, p3);
+  const ptPrev = getBezierPoint(prevT, p0, p1, p2, p3);
+  
+  const angle = Math.atan2(ptNext.y - ptPrev.y, ptNext.x - ptPrev.x) * (180 / Math.PI);
+  return { x: pt.x, y: pt.y, angle };
+};
+
+const gridLines = (() => {
+  const lines = [];
+  for (let i = 20; i < 300; i += 30) {
+    lines.push(<line key={`h-${i}`} x1="0" y1={i} x2="300" y2={i} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />);
+    lines.push(<line key={`v-${i}`} x1={i} y1="0" x2={i} y2="240" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />);
+  }
+  return lines;
+})();
+
+const blocks = [
+  { x: 15, y: 15, w: 50, h: 40, label: "Park", color: "#06181f" },
+  { x: 80, y: 15, w: 70, h: 50, label: "Sector 1", color: "#0c1735" },
+  { x: 165, y: 15, w: 115, h: 30, label: "Market", color: "#0c1735" },
+  
+  { x: 15, y: 70, w: 50, h: 80, label: "Sector 2", color: "#0c1735" },
+  { x: 120, y: 80, w: 60, h: 70, label: "Mall", color: "#0c1735" },
+  { x: 230, y: 60, w: 55, h: 60, label: "Sector 3", color: "#0c1735" },
+  
+  { x: 80, y: 165, w: 60, h: 60, label: "Sector 4", color: "#0c1735" },
+  { x: 155, y: 165, w: 75, h: 60, label: "Sector 5", color: "#0c1735" },
+  { x: 245, y: 135, w: 40, h: 90, label: "Sector 6", color: "#0c1735" },
+];
+
 export default function DeliveryDashboard() {
   const [available, setAvailable] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
@@ -164,12 +220,56 @@ export default function DeliveryDashboard() {
     return null;
   }, [myOrders]);
 
+  const [trackerT, setTrackerT] = useState(0.0);
+
+  useEffect(() => {
+    if (!currentOrder) {
+      setTrackerT(0.0);
+      return;
+    }
+
+    const status = currentOrder.status;
+    if (status === "On the way") {
+      const interval = setInterval(() => {
+        setTrackerT((prev) => {
+          if (prev >= 1.0) {
+            return 0.0;
+          }
+          return prev + 0.005;
+        });
+      }, 80);
+      return () => clearInterval(interval);
+    } else if (status === "Delivered") {
+      setTrackerT(1.0);
+    } else {
+      setTrackerT(0.0);
+    }
+  }, [currentOrder?.status, currentOrder?._id]);
+
+  const { x, y, angle } = useMemo(() => getRoutePoint(trackerT), [trackerT]);
+
+  const trackingText = useMemo(() => {
+    if (!currentOrder) return "";
+    const status = currentOrder.status;
+    if (status === "On the way") {
+      const remainingKm = ((1 - trackerT) * 5.7).toFixed(1);
+      const eta = Math.ceil((1 - trackerT) * 15);
+      return `On the way • ETA: ${eta} mins (${remainingKm} km left)`;
+    } else if (status === "Delivered") {
+      return "Order delivered successfully!";
+    } else {
+      return "At Restaurant • Waiting for pickup";
+    }
+  }, [currentOrder?.status, trackerT]);
+
   const stats = useMemo(() => {
-    const totalOrders = combined.length;
-    const activeOrders = combined.filter((o) => o.active).length;
-    const revenue = combined.reduce((s, o) => s + Number(o.total || o.amount || 0), 0);
-    return { totalOrders, activeOrders, revenue, avgDeliveryTime: 32 };
-  }, [combined]);
+    const myCompleted = myOrders.filter(o => o.status === "Delivered");
+    const myActive = myOrders.filter(o => o.status !== "Delivered" && o.status !== "Cancelled");
+    const completedCount = myCompleted.length;
+    const activeCount = myActive.length;
+    const revenue = myCompleted.reduce((s, o) => s + Number(o.total || o.amount || 0), 0);
+    return { totalOrders: completedCount, activeOrders: activeCount, revenue, avgDeliveryTime: 32 };
+  }, [myOrders]);
 
   const statusCounts = useMemo(() => {
     const map = {};
@@ -275,10 +375,10 @@ export default function DeliveryDashboard() {
             <div className="metric-icon">📦</div>
             <div className="metric-value">
               <h3>{stats.totalOrders}</h3>
-              <div className="metric-change muted">{statusCounts && statusCounts.New ? `${statusCounts.New} new` : ''}</div>
+              <div className="metric-change muted">{stats.totalOrders} completed</div>
             </div>
           </div>
-          <p className="label">Total Orders</p>
+          <p className="label">Total Deliveries</p>
         </div>
 
         <div className="stat">
@@ -363,10 +463,112 @@ export default function DeliveryDashboard() {
                 </div>
 
                 <div>
-                  <div className="map-placeholder" style={{height:240,borderRadius:12,overflow:'hidden'}}>
-                    <div style={{width:'100%',height:'100%',background:'linear-gradient(180deg,#0b1226,#1f2937)'}} />
+                  <div className="map-placeholder" style={{height:240,borderRadius:12,overflow:'hidden',position:'relative'}}>
+                    <svg viewBox="0 0 300 240" style={{width:'100%',height:'100%',background:'#080f24',display:'block'}}>
+                      {/* Grid Lines */}
+                      {gridLines}
+
+                      {/* City Blocks */}
+                      {blocks.map((b, idx) => (
+                        <g key={idx}>
+                          <rect
+                            x={b.x}
+                            y={b.y}
+                            width={b.w}
+                            height={b.h}
+                            rx="6"
+                            fill={b.color}
+                            stroke="rgba(255, 255, 255, 0.03)"
+                            strokeWidth="1"
+                          />
+                          <text
+                            x={b.x + b.w / 2}
+                            y={b.y + b.h / 2 + 4}
+                            fill="rgba(255, 255, 255, 0.15)"
+                            fontSize="10"
+                            textAnchor="middle"
+                            style={{ pointerEvents: 'none', userSelect: 'none' }}
+                          >
+                            {b.label}
+                          </text>
+                        </g>
+                      ))}
+
+                      {/* Background Road/Route Path */}
+                      <path
+                        d="M 40 180 C 100 40, 200 200, 260 60"
+                        fill="none"
+                        stroke="#1b254b"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M 40 180 C 100 40, 200 200, 260 60"
+                        fill="none"
+                        stroke="#2e3b75"
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeDasharray="4 4"
+                      />
+
+                      {/* Active Route Glow & Path */}
+                      {trackerT > 0 && (
+                        <>
+                          <path
+                            d="M 40 180 C 100 40, 200 200, 260 60"
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth="10"
+                            strokeLinecap="round"
+                            opacity="0.25"
+                            pathLength="100"
+                            strokeDasharray={`${trackerT * 100} 100`}
+                          />
+                          <path
+                            d="M 40 180 C 100 40, 200 200, 260 60"
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            pathLength="100"
+                            strokeDasharray={`${trackerT * 100} 100`}
+                          />
+                        </>
+                      )}
+
+                      {/* Restaurant Pin & Pulsing Ring */}
+                      <circle cx="40" cy="180" r="10" fill="#ff7a29" opacity="0.25">
+                        <animate attributeName="r" values="8;16;8" dur="2.5s" repeatCount="indefinite" />
+                      </circle>
+                      <circle cx="40" cy="180" r="4" fill="#ff7a29" />
+                      <text x="40" y="186" fontSize="16" textAnchor="middle" style={{ userSelect: 'none' }}>🏪</text>
+
+                      {/* Customer Pin & Pulsing Ring */}
+                      <circle cx="260" cy="60" r="10" fill="#10b981" opacity="0.25">
+                        <animate attributeName="r" values="8;16;8" dur="2.5s" repeatCount="indefinite" />
+                      </circle>
+                      <circle cx="260" cy="60" r="4" fill="#10b981" />
+                      <text x="260" y="66" fontSize="16" textAnchor="middle" style={{ userSelect: 'none' }}>🏠</text>
+
+                      {/* Rider Icon */}
+                      <g transform={`translate(${x}, ${y}) rotate(${angle})`}>
+                        <text
+                          x="0"
+                          y="6"
+                          fontSize="22"
+                          textAnchor="middle"
+                          transform="scale(-1, 1)"
+                          style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))', userSelect: 'none' }}
+                        >
+                          🛵
+                        </text>
+                      </g>
+                    </svg>
                   </div>
-                  <div style={{marginTop:8,fontSize:13,color:'#64748b'}}>Rider: Rahul Singh <span style={{marginLeft:8}}>ETA: 12 mins • 2.4 km away</span></div>
+                  <div style={{marginTop:8,fontSize:13,color:'#64748b',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span>Rider: Rahul Singh</span>
+                    <span style={{fontWeight:600,color:'#3b82f6'}}>{trackingText}</span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -519,10 +721,81 @@ export default function DeliveryDashboard() {
 
           <div className="card map">
             <h3>Live Delivery Tracking</h3>
-            <div className="map-placeholder">
-              <div className="map-pin"><FiMapPin size={28} /></div>
+            <div className="map-placeholder" style={{height:200,borderRadius:12,overflow:'hidden',position:'relative',background:'#080f24',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              {currentOrder ? (
+                <svg viewBox="0 0 300 240" style={{width:'100%',height:'100%',background:'#080f24',display:'block'}}>
+                  {/* Grid Lines */}
+                  {gridLines}
+
+                  {/* City Blocks */}
+                  {blocks.map((b, idx) => (
+                    <g key={idx}>
+                      <rect
+                        x={b.x}
+                        y={b.y}
+                        width={b.w}
+                        height={b.h}
+                        rx="6"
+                        fill={b.color}
+                        stroke="rgba(255, 255, 255, 0.03)"
+                        strokeWidth="1"
+                      />
+                    </g>
+                  ))}
+
+                  {/* Background Road/Route Path */}
+                  <path
+                    d="M 40 180 C 100 40, 200 200, 260 60"
+                    fill="none"
+                    stroke="#1b254b"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Active Route Glow & Path */}
+                  {trackerT > 0 && (
+                    <path
+                      d="M 40 180 C 100 40, 200 200, 260 60"
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      pathLength="100"
+                      strokeDasharray={`${trackerT * 100} 100`}
+                    />
+                  )}
+
+                  {/* Pins */}
+                  <circle cx="40" cy="180" r="4" fill="#ff7a29" />
+                  <text x="40" y="186" fontSize="16" textAnchor="middle" style={{ userSelect: 'none' }}>🏪</text>
+                  <circle cx="260" cy="60" r="4" fill="#10b981" />
+                  <text x="260" y="66" fontSize="16" textAnchor="middle" style={{ userSelect: 'none' }}>🏠</text>
+
+                  {/* Rider Icon */}
+                  <g transform={`translate(${x}, ${y}) rotate(${angle})`}>
+                    <text
+                      x="0"
+                      y="6"
+                      fontSize="22"
+                      textAnchor="middle"
+                      transform="scale(-1, 1)"
+                      style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))', userSelect: 'none' }}
+                    >
+                      🛵
+                    </text>
+                  </g>
+                </svg>
+              ) : (
+                <div className="map-pin"><FiMapPin size={28} /></div>
+              )}
             </div>
-            <div className="rider">Rider: Rahul Singh <span className="muted">ETA: 12 mins • 2.4 km away</span></div>
+            <div className="rider">
+              {currentOrder ? (
+                <>Rider: Rahul Singh <span className="muted" style={{marginLeft:8}}>{trackingText}</span></>
+              ) : (
+                <>Rider: Rahul Singh <span className="muted">ETA: 12 mins • 2.4 km away</span></>
+              )}
+            </div>
           </div>
 
           <div className="card sellers">
