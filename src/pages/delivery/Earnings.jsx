@@ -7,89 +7,50 @@ import "../../styles/restaurant-dashboard.css";
 const fmtMoney = (v) => `₹${Number(v || 0).toFixed(0)}`;
 
 export default function Earnings() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedBar, setSelectedBar] = useState(null);
 
-  // Fallback demo data if backend connection has no completed deliveries yet
-  const demoOrders = [
-    {
-      _id: "demo1",
-      orderCode: "#FD1001",
-      total: 480,
-      status: "Delivered",
-      createdAt: new Date().toISOString(),
-      restaurantName: "Spice Corner",
-      address: "MG Road, Udupi",
-    },
-    {
-      _id: "demo2",
-      orderCode: "#FD1002",
-      total: 350,
-      status: "Delivered",
-      createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-      restaurantName: "Burger Hub",
-      address: "Park Street, Udupi",
-    },
-    {
-      _id: "demo3",
-      orderCode: "#FD1003",
-      total: 620,
-      status: "Delivered",
-      createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-      restaurantName: "Biryani Palace",
-      address: "Lake Road, Udupi",
-    },
-  ];
-
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchEarnings = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const res = await api.get("/delivery/my-orders");
-      const data = Array.isArray(res.data) ? res.data : res.data?.value || [];
-      if (data.length === 0) {
-        setOrders(demoOrders);
-      } else {
-        setOrders(data);
-      }
+      const res = await api.get("/delivery/wallet");
+      setTransactions(res.data.transactions || []);
     } catch (err) {
       console.error(err);
-      setOrders(demoOrders);
+      toast.error("Failed to load earnings data");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrders();
+    fetchEarnings();
   }, []);
 
-  const deliveredOrders = useMemo(() => {
-    return orders.filter((o) => o.status === "Delivered");
-  }, [orders]);
-
-  // Compute statistics
   const stats = useMemo(() => {
     let today = 0;
     let weekly = 0;
     let monthly = 0;
+    let creditCount = 0;
     const now = new Date();
 
-    deliveredOrders.forEach((o) => {
-      const val = Number(o.total || o.amount || 0);
-      const deliveryEarn = Math.round(val * 0.15 + 40); // 15% commission + 40 base fare
-      const date = new Date(o.createdAt);
+    transactions.forEach((tx) => {
+      if (tx.type !== "credit") return;
+      creditCount++;
+      const val = Number(tx.amount || 0);
+      const date = new Date(tx.createdAt);
 
       const diffTime = Math.abs(now - date);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (diffDays <= 1) today += deliveryEarn;
-      if (diffDays <= 7) weekly += deliveryEarn;
-      if (diffDays <= 30) monthly += deliveryEarn;
+      if (diffDays <= 1) today += val;
+      if (diffDays <= 7) weekly += val;
+      if (diffDays <= 30) monthly += val;
     });
 
-    return { today, weekly, monthly, count: deliveredOrders.length };
-  }, [deliveredOrders]);
+    return { today, weekly, monthly, count: creditCount };
+  }, [transactions]);
 
   // Last 7 days chart data
   const chartData = useMemo(() => {
@@ -104,24 +65,28 @@ export default function Earnings() {
       };
     }).reverse();
 
-    deliveredOrders.forEach((o) => {
-      const val = Number(o.total || o.amount || 0);
-      const deliveryEarn = Math.round(val * 0.15 + 40);
-      const oDate = new Date(o.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
+    transactions.forEach((tx) => {
+      if (tx.type !== "credit") return;
+      const val = Number(tx.amount || 0);
+      const oDate = new Date(tx.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
 
       const item = result.find((r) => r.dateStr === oDate);
       if (item) {
-        item.amount += deliveryEarn;
+        item.amount += val;
       }
     });
 
     return result;
-  }, [deliveredOrders]);
+  }, [transactions]);
 
   const maxChartVal = useMemo(() => {
     const vals = chartData.map((c) => c.amount);
     return Math.max(...vals, 400); // minimum scale limit
   }, [chartData]);
+
+  const creditLogs = useMemo(() => {
+    return transactions.filter((tx) => tx.type === "credit");
+  }, [transactions]);
 
   return (
     <div className="delivery-earnings-page">
@@ -130,7 +95,7 @@ export default function Earnings() {
           <h2>Earnings & Payouts</h2>
           <p className="muted">Track your daily income, commission share, and weekly summaries.</p>
         </div>
-        <button className="icon-btn" onClick={fetchOrders} aria-label="refresh" disabled={loading}>
+        <button className="icon-btn" onClick={() => fetchEarnings()} aria-label="refresh" disabled={loading}>
           <FiRefreshCw className={loading ? "spin" : ""} />
         </button>
       </header>
@@ -244,19 +209,18 @@ export default function Earnings() {
       {/* Recent Earnings Log */}
       <div className="card" style={{ background: "white", padding: "20px", borderRadius: "12px", marginTop: "20px" }}>
         <h3 style={{ margin: "0 0 16px 0" }}>Recent Delivery Logs</h3>
-        {deliveredOrders.length === 0 ? (
+        {creditLogs.length === 0 ? (
           <p className="muted" style={{ textAlign: "center", padding: "20px 0" }}>No completed deliveries found.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {deliveredOrders.slice(0, 10).map((o) => {
-              const val = Number(o.total || o.amount || 0);
+            {creditLogs.slice(0, 10).map((tx) => {
+              const val = Number(tx.amount || 0);
               const base = 40;
-              const commission = Math.round(val * 0.15);
-              const totalPayout = base + commission;
+              const commission = val - base;
 
               return (
                 <div
-                  key={o._id || o.id}
+                  key={tx._id || tx.id}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
@@ -267,15 +231,15 @@ export default function Earnings() {
                   }}
                 >
                   <div>
-                    <strong style={{ display: "block", color: "#0f172a" }}>{o.restaurantName || "Spice Corner"}</strong>
+                    <strong style={{ display: "block", color: "#0f172a" }}>{tx.title}</strong>
                     <span style={{ fontSize: "13px", color: "#64748b" }}>
-                      Order: {o.orderCode} • {new Date(o.createdAt).toLocaleDateString()}
+                      {new Date(tx.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <strong style={{ display: "block", color: "#10b981", fontSize: "16px" }}>+{fmtMoney(totalPayout)}</strong>
+                    <strong style={{ display: "block", color: "#10b981", fontSize: "16px" }}>+{fmtMoney(val)}</strong>
                     <span style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      (Base: ₹{base} + Comm: ₹{commission})
+                      (Base: ₹{base} + Comm: ₹{Math.max(0, commission)})
                     </span>
                   </div>
                 </div>

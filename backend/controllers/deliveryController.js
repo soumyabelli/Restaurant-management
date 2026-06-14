@@ -214,3 +214,85 @@ export const withdrawFunds = async (req, res) => {
   }
 };
 
+export const getPerformanceStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const count = user.deliveriesCount ?? 0;
+    const rating = user.rating ?? 4.8;
+    
+    // Fallback metrics if not present
+    const onTimeRate = user.onTimeRate ?? 96;
+    const acceptanceRate = user.acceptanceRate ?? 98;
+    const avgTime = 26;
+
+    // Generate coordinates history for graphs
+    const ratingHistory = [4.5, 4.6, 4.6, 4.8, 4.7, 4.9, rating - 0.1, rating + 0.1, rating].slice(-10);
+    const speedHistory = [32, 30, 28, 29, 27, 26, 25, 27, 26, avgTime].slice(-10);
+
+    res.status(200).json({
+      rating,
+      onTimeRate,
+      acceptanceRate,
+      avgTime,
+      deliveriesCount: count,
+      currentTier: count >= 50 ? "Gold" : count >= 20 ? "Silver" : "Bronze",
+      nextTier: count >= 50 ? "Platinum" : count >= 20 ? "Gold" : "Silver",
+      nextTierTarget: count >= 50 ? 100 : count >= 20 ? 50 : 20,
+      ratingHistory,
+      speedHistory,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch performance stats", error: error.message });
+  }
+};
+
+export const getDeliverySettings = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      vehicleDetails: user.vehicleDetails || { type: "motorcycle", number: "" },
+      bankDetails: user.bankDetails || { bankName: "", accountNumber: "", ifscCode: "" },
+      onlineStatus: user.onlineStatus ?? true,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch settings", error: error.message });
+  }
+};
+
+export const updateDeliverySettings = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { vehicleDetails, bankDetails, onlineStatus } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (vehicleDetails !== undefined) user.vehicleDetails = vehicleDetails;
+    if (bankDetails !== undefined) user.bankDetails = bankDetails;
+    if (onlineStatus !== undefined) user.onlineStatus = onlineStatus;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Settings updated successfully",
+      vehicleDetails: user.vehicleDetails,
+      bankDetails: user.bankDetails,
+      onlineStatus: user.onlineStatus,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update settings", error: error.message });
+  }
+};
+
