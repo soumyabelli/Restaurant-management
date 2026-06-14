@@ -7,6 +7,9 @@ import {
   updateOrderStatus,
   getWalletDetails,
   withdrawFunds,
+  getPerformanceStats,
+  getDeliverySettings,
+  updateDeliverySettings,
 } from "../controllers/deliveryController.js";
 
 const router = express.Router();
@@ -22,5 +25,12 @@ router.put("/:orderId/status", updateOrderStatus);
 // Wallet routes
 router.get("/wallet", getWalletDetails);
 router.post("/wallet/withdraw", withdrawFunds);
+
+// Performance route
+router.get("/performance", getPerformanceStats);
+
+// Settings routes
+router.get("/settings", getDeliverySettings);
+router.put("/settings", updateDeliverySettings);
 
 export default router;

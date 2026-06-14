@@ -87,20 +87,20 @@ function ReviewsAndRatingsPage() {
         {!loading && !error && reviews.length > 0 && (
           <div className="orders-list">
             {reviews.map(review => (
-              <div className="order-item" key={review.id} style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+              <div className="order-item" key={review.id || review._id} style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
                 <div style={{ flex: "0 0 50px", height: "50px", borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", color: "#475569" }}>
                   {review.customerAvatar ? (
                     <img src={review.customerAvatar} alt="avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
                   ) : (
-                    review.customerName.charAt(0).toUpperCase()
+                    (review.customerName || "Anonymous").charAt(0).toUpperCase()
                   )}
                 </div>
                 
                 <div className="order-left" style={{ flex: "1 1 300px" }}>
                   <div className="order-id" style={{ fontSize: "16px", color: "#0f172a" }}>
-                    {review.customerName}
+                    {review.customerName || "Anonymous"}
                     <span style={{ fontWeight: "normal", color: "#64748b", fontSize: "12px", marginLeft: "8px" }}>
-                      {new Date(review.date).toLocaleDateString()}
+                      {review.date ? new Date(review.date).toLocaleDateString() : "Recent"}
                     </span>
                   </div>
                   <div style={{ marginTop: "6px", display: "flex", gap: "2px" }}>
@@ -109,7 +109,7 @@ function ReviewsAndRatingsPage() {
                     ))}
                   </div>
                   <div style={{ marginTop: "10px", fontSize: "15px", color: "#334155", lineHeight: "1.5" }}>
-                    "{review.comment}"
+                    "{review.comment || ""}"
                   </div>
                 </div>
               </div>

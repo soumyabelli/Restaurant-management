@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { FiSettings, FiTruck, FiBell, FiLock, FiLogOut } from "react-icons/fi";
+import { FiSettings, FiTruck, FiBell, FiLock, FiLogOut, FiRefreshCw } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import api from "../../api/client";
 import "../../styles/restaurant-dashboard.css";
 
 export default function Settings() {
   const navigate = useNavigate();
   const [onlineStatus, setOnlineStatus] = useState(true);
+  const [loading, setLoading] = useState(true);
   
   const [vehicle, setVehicle] = useState({
     type: "motorcycle",
-    number: "KA-20-EQ-5432",
+    number: "",
   });
 
   const [notifications, setNotifications] = useState({
@@ -20,47 +22,65 @@ export default function Settings() {
   });
 
   const [bankDetails, setBankDetails] = useState({
-    bankName: "State Bank of India",
-    accountNumber: "34982394829",
-    ifscCode: "SBIN0001248",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
   });
 
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get("/delivery/settings");
+      setOnlineStatus(res.data.onlineStatus ?? true);
+      if (res.data.vehicleDetails) setVehicle(res.data.vehicleDetails);
+      if (res.data.bankDetails) setBankDetails(res.data.bankDetails);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load settings from server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const savedVehicle = localStorage.getItem("delivery_vehicle");
-    if (savedVehicle) {
-      try { setVehicle(JSON.parse(savedVehicle)); } catch (e) {}
-    }
-    const savedNotifications = localStorage.getItem("delivery_notifications");
-    if (savedNotifications) {
-      try { setNotifications(JSON.parse(savedNotifications)); } catch (e) {}
-    }
-    const savedBank = localStorage.getItem("delivery_bank");
-    if (savedBank) {
-      try { setBankDetails(JSON.parse(savedBank)); } catch (e) {}
-    }
-    const savedDuty = localStorage.getItem("delivery_online_duty");
-    if (savedDuty) {
-      setOnlineStatus(savedDuty === "true");
-    }
+    fetchSettings();
   }, []);
 
-  const saveVehicle = (e) => {
+  const saveVehicle = async (e) => {
     e.preventDefault();
-    localStorage.setItem("delivery_vehicle", JSON.stringify(vehicle));
-    toast.success("Vehicle details updated");
+    try {
+      await api.put("/delivery/settings", { vehicleDetails: vehicle });
+      toast.success("Vehicle details successfully updated in database");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save vehicle details");
+    }
   };
 
-  const saveBank = (e) => {
+  const saveBank = async (e) => {
     e.preventDefault();
-    localStorage.setItem("delivery_bank", JSON.stringify(bankDetails));
-    toast.success("Bank details updated for payouts");
+    try {
+      await api.put("/delivery/settings", { bankDetails: bankDetails });
+      toast.success("Bank details successfully linked for payouts");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save bank details");
+    }
   };
 
-  const handleDutyToggle = () => {
-    const val = !onlineStatus;
-    setOnlineStatus(val);
-    localStorage.setItem("delivery_online_duty", String(val));
-    toast.success(val ? "You are now ONLINE. Preparing for order alerts." : "You are now OFFLINE. No orders will be assigned.");
+  const handleDutyToggle = async () => {
+    const nextStatus = !onlineStatus;
+    try {
+      await api.put("/delivery/settings", { onlineStatus: nextStatus });
+      setOnlineStatus(nextStatus);
+      toast.success(
+        nextStatus
+          ? "You are now ONLINE. Preparing for order alerts."
+          : "You are now OFFLINE. No orders will be assigned."
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to toggle availability status");
+    }
   };
 
   const handleNotifyToggle = (key) => {
@@ -68,7 +88,7 @@ export default function Settings() {
     const newNotifications = { ...notifications, [key]: val };
     setNotifications(newNotifications);
     localStorage.setItem("delivery_notifications", JSON.stringify(newNotifications));
-    toast.success("Preferences updated");
+    toast.success("Notification preference updated");
   };
 
   const handleLogout = () => {
@@ -77,6 +97,23 @@ export default function Settings() {
     toast.success("Logged out successfully");
     navigate("/login");
   };
+
+  if (loading) {
+    return (
+      <div className="delivery-settings-page" style={{ padding: "40px", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+        <div style={{ textAlign: "center" }}>
+          <FiRefreshCw className="spin" style={{ fontSize: "30px", marginBottom: "12px", animation: "spin_loader 1s linear infinite", color: "#6366f1" }} />
+          <h3>Loading Settings...</h3>
+        </div>
+        <style>{`
+          @keyframes spin_loader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="delivery-settings-page">
@@ -106,6 +143,7 @@ export default function Settings() {
               fontWeight: "700",
               background: onlineStatus ? "#ecfdf5" : "#f1f5f9",
               color: onlineStatus ? "#10b981" : "#475569",
+              transition: "all 0.2s"
             }}
           >
             {onlineStatus ? "🟢 ONLINE" : "🔴 OFFLINE"}

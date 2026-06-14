@@ -38,6 +38,37 @@ const userSchema = new mongoose.Schema(
       default: 2450,
     },
 
+    vehicleDetails: {
+      type: {
+        type: String,
+        default: "motorcycle",
+      },
+      number: {
+        type: String,
+        default: "",
+      },
+    },
+
+    bankDetails: {
+      bankName: {
+        type: String,
+        default: "",
+      },
+      accountNumber: {
+        type: String,
+        default: "",
+      },
+      ifscCode: {
+        type: String,
+        default: "",
+      },
+    },
+
+    onlineStatus: {
+      type: Boolean,
+      default: true,
+    },
+
     savedAddresses: [
       {
         label: {

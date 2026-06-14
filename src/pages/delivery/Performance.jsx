@@ -1,29 +1,38 @@
-import React, { useState } from "react";
-import { FiAward, FiStar, FiClock, FiCheckCircle, FiActivity } from "react-icons/fi";
+import React, { useState, useEffect } from "react";
+import api from "../../api/client";
+import toast from "react-hot-toast";
+import { FiAward, FiStar, FiClock, FiCheckCircle, FiActivity, FiRefreshCw } from "react-icons/fi";
 import "../../styles/restaurant-dashboard.css";
 
 export default function Performance() {
   const [activeTab, setActiveTab] = useState("rating");
+  const [metrics, setMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock performance data
-  const metrics = {
-    rating: 4.85,
-    onTimeRate: 96,
-    acceptanceRate: 98,
-    avgTime: 26, // minutes
-    deliveriesCount: 38,
-    nextTierTarget: 50,
-    currentTier: "Silver",
-    nextTier: "Gold",
+  const fetchStats = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await api.get("/delivery/performance");
+      setMetrics(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load performance metrics");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
-  const ratingHistory = [4.5, 4.6, 4.6, 4.8, 4.7, 4.9, 4.8, 4.9, 4.8, 4.9];
-  const speedHistory = [32, 30, 28, 29, 27, 26, 25, 27, 26, 26];
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const ratingHistory = metrics?.ratingHistory || [4.5, 4.6, 4.6, 4.8, 4.7, 4.9, 4.8, 4.9, 4.8, 4.8];
+  const speedHistory = metrics?.speedHistory || [32, 30, 28, 29, 27, 26, 25, 27, 26, 26];
 
   const pointsRating = ratingHistory.map((val, idx) => ({
     x: 40 + idx * 50,
     y: 180 - (val - 4.0) * 120, // scale ratings 4.0 - 5.0 in 0-180 height
-    val: val.toFixed(1),
+    val: Number(val).toFixed(1),
   }));
 
   const pointsSpeed = speedHistory.map((val, idx) => ({
@@ -38,6 +47,32 @@ export default function Performance() {
     ""
   );
 
+  if (loading) {
+    return (
+      <div className="delivery-performance-page" style={{ padding: "40px", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+        <div style={{ textAlign: "center" }}>
+          <FiRefreshCw className="spin" style={{ fontSize: "30px", marginBottom: "12px", animation: "spin_loader 1s linear infinite", color: "#6366f1" }} />
+          <h3>Loading Performance Stats...</h3>
+        </div>
+        <style>{`
+          @keyframes spin_loader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  const riderRating = metrics?.rating ?? 4.8;
+  const onTimeRate = metrics?.onTimeRate ?? 96;
+  const acceptanceRate = metrics?.acceptanceRate ?? 98;
+  const avgTime = metrics?.avgTime ?? 26;
+  const deliveriesCount = metrics?.deliveriesCount ?? 0;
+  const nextTierTarget = metrics?.nextTierTarget ?? 50;
+  const currentTier = metrics?.currentTier || "Bronze";
+  const nextTier = metrics?.nextTier || "Silver";
+
   return (
     <div className="delivery-performance-page">
       <header className="rh-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -45,6 +80,9 @@ export default function Performance() {
           <h2>My Performance</h2>
           <p className="muted">Monitor your ratings, average delivery speeds, and career level progress.</p>
         </div>
+        <button className="icon-btn" onClick={() => fetchStats()} aria-label="refresh" disabled={loading}>
+          <FiRefreshCw className={loading ? "spin" : ""} />
+        </button>
       </header>
 
       {/* KPI Cards */}
@@ -53,7 +91,7 @@ export default function Performance() {
           <div className="stat-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div className="metric-icon" style={{ fontSize: "24px", color: "#f59e0b" }}><FiStar /></div>
             <div className="metric-value">
-              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{metrics.rating} ★</h3>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{riderRating.toFixed(2)} ★</h3>
             </div>
           </div>
           <p className="label" style={{ color: "#64748b", margin: "8px 0 0 0", fontSize: "14px" }}>Customer Rating</p>
@@ -63,7 +101,7 @@ export default function Performance() {
           <div className="stat-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div className="metric-icon" style={{ fontSize: "24px", color: "#10b981" }}><FiClock /></div>
             <div className="metric-value">
-              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{metrics.onTimeRate}%</h3>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{onTimeRate}%</h3>
             </div>
           </div>
           <p className="label" style={{ color: "#64748b", margin: "8px 0 0 0", fontSize: "14px" }}>On-Time Deliveries</p>
@@ -73,7 +111,7 @@ export default function Performance() {
           <div className="stat-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div className="metric-icon" style={{ fontSize: "24px", color: "#6366f1" }}><FiCheckCircle /></div>
             <div className="metric-value">
-              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{metrics.acceptanceRate}%</h3>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{acceptanceRate}%</h3>
             </div>
           </div>
           <p className="label" style={{ color: "#64748b", margin: "8px 0 0 0", fontSize: "14px" }}>Order Acceptance Rate</p>
@@ -83,7 +121,7 @@ export default function Performance() {
           <div className="stat-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div className="metric-icon" style={{ fontSize: "24px", color: "#ec4899" }}><FiActivity /></div>
             <div className="metric-value">
-              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{metrics.avgTime} min</h3>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", margin: 0 }}>{avgTime} min</h3>
             </div>
           </div>
           <p className="label" style={{ color: "#64748b", margin: "8px 0 0 0", fontSize: "14px" }}>Avg Delivery Time</p>
@@ -173,7 +211,7 @@ export default function Performance() {
         </div>
 
         {/* Level Progression Card */}
-        <div className="card" style={{ background: "white", padding: "20px", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div className="card" style={{ background: "white", padding: "20px", borderRadius: "12px", display: "flex", flexDirection: "column", justifyItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
               <FiAward size={22} style={{ color: "#6366f1" }} />
@@ -181,25 +219,25 @@ export default function Performance() {
             </div>
             
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
-              <strong style={{ fontSize: "20px", color: "#334155" }}>{metrics.currentTier} Level</strong>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>Next: {metrics.nextTier}</span>
+              <strong style={{ fontSize: "20px", color: "#334155" }}>{currentTier} Level</strong>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>Next: {nextTier}</span>
             </div>
 
             <p style={{ color: "#64748b", fontSize: "13px", lineHeight: "1.4", margin: "0 0 16px 0" }}>
-              Reach {metrics.nextTierTarget} completed deliveries to unlock Gold status bonuses and high-value orders pool.
+              Reach {nextTierTarget} completed deliveries to unlock {nextTier} status bonuses and high-value orders pool.
             </p>
           </div>
 
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>
-              <span>{metrics.deliveriesCount} / {metrics.nextTierTarget} Orders</span>
-              <span>{Math.round((metrics.deliveriesCount / metrics.nextTierTarget) * 100)}%</span>
+              <span>{deliveriesCount} / {nextTierTarget} Orders</span>
+              <span>{Math.min(100, Math.round((deliveriesCount / nextTierTarget) * 100))}%</span>
             </div>
             
             <div style={{ width: "100%", height: "8px", background: "#f1f5f9", borderRadius: "4px", overflow: "hidden" }}>
               <div
                 style={{
-                  width: `${(metrics.deliveriesCount / metrics.nextTierTarget) * 100}%`,
+                  width: `${Math.min(100, (deliveriesCount / nextTierTarget) * 100)}%`,
                   height: "100%",
                   background: "linear-gradient(to right, #6366f1, #818cf8)",
                   borderRadius: "4px",
