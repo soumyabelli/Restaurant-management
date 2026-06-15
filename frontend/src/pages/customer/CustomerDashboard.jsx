@@ -1776,6 +1776,29 @@ function WalletSection({ onNavigate }) {
   );
 }
 
+function StarVisual({ rating = 0 }) {
+  const safeRating = Math.max(0, Math.min(5, Number(rating || 0)));
+  const full = Math.floor(safeRating);
+  const hasHalf = safeRating - full >= 0.5;
+
+  return (
+    <div className="review-stars" aria-label={`${safeRating.toFixed(1)} out of 5`}>
+      {Array.from({ length: 5 }).map((_, i) => {
+        const idx = i + 1;
+        let state = "empty";
+        if (idx <= full) state = "full";
+        else if (idx === full + 1 && hasHalf) state = "half";
+        return (
+          <span key={i} className={`review-stars__star state-${state}`} aria-hidden="true">
+            ★
+          </span>
+        );
+      })}
+      <span className="review-stars__value">{safeRating.toFixed(1)}</span>
+    </div>
+  );
+}
+
 function ReviewsSection() {
   const [savedReviews, setSavedReviews] = useState([]);
 
@@ -1788,42 +1811,134 @@ function ReviewsSection() {
       setSavedReviews([]);
     }
   }, []);
+
+  const displayed = savedReviews.length ? savedReviews : reviewCards;
+  const averageRatingStat = reviewStats.find((s) => s.label === "Average rating");
+  const avgRating = Number(averageRatingStat?.value || 0);
+
+  const getReviewStars = (review) => {
+    // Supports multiple review shapes from localStorage mocks.
+    const r = review.rating ?? review.stars ?? review.starRating;
+    return Number(r || 0);
+  };
+
   return (
     <div className="dashboard-stack">
       <SectionShell
+        className="reviews-section-shell"
         eyebrow="Reputation"
         title="Your review profile"
         subtitle="Rating trends and the places you rate most often."
       >
-        <div className="metric-grid">
-          {reviewStats.map((stat) => (
-            <MetricCard key={stat.label} {...stat} />
-          ))}
+        <div className="reviews-premium-layout">
+          <div className="reviews-reputation-hero">
+            <div className="reviews-reputation-hero__bg" aria-hidden="true" />
+            <div className="reviews-reputation-hero__content">
+              <div className="reviews-reputation-hero__top">
+                <div className="reviews-reputation-hero__icon" aria-hidden="true">
+                  <AiOutlineStar />
+                </div>
+                <div className="reviews-reputation-hero__meta">
+                  <div className="reviews-reputation-hero__eyebrow">Across all reviews</div>
+                  <div className="reviews-reputation-hero__rating">
+                    <span className="reviews-reputation-hero__rating-value">{avgRating.toFixed(1)}</span>
+                    <span className="reviews-reputation-hero__rating-outof">/ 5.0</span>
+                  </div>
+                </div>
+              </div>
+
+              <StarVisual rating={avgRating} />
+
+              <div className="reviews-reputation-hero__trend">
+                <span className="trend-chip trend-chip--up">▲ Positive trend</span>
+                <span className="trend-chip trend-chip--soft">Fast feedback loop</span>
+              </div>
+
+              <div className="reviews-reputation-hero__hint">Your taste is consistent—keep rating to unlock better recommendations.</div>
+            </div>
+          </div>
+
+          <div className="reviews-metric-grid">
+            {reviewStats.map((stat) => (
+              <article key={stat.label} className={`reviews-metric-card tone-${stat.tone || "mint"}`.trim()}>
+                <div className="reviews-metric-card__icon" aria-hidden="true">
+                  {stat.icon ? (
+                    <span className="reviews-metric-card__icon-svg">
+                      {/** render icon directly for clean UI */}
+                      {(() => {
+                        const Ico = stat.icon;
+                        return <Ico />;
+                      })()}
+                    </span>
+                  ) : (
+                    <AiOutlineStar />
+                  )}
+                </div>
+                <div className="reviews-metric-card__body">
+                  <div className="reviews-metric-card__toprow">
+                    <div className="reviews-metric-card__label">{stat.label}</div>
+                    <span className="reviews-metric-card__trend">+12%</span>
+                  </div>
+                  <div className="reviews-metric-card__value">{stat.value}</div>
+                  <div className="reviews-metric-card__note">{stat.note}</div>
+                </div>
+                <div className="reviews-metric-card__shine" aria-hidden="true" />
+              </article>
+            ))}
+          </div>
         </div>
       </SectionShell>
 
       <SectionShell
+        className="reviews-section-shell"
         eyebrow="Recent feedback"
         title="Recent reviews"
-        subtitle="A neat feed of the places you rated recently."
+        subtitle="A curated feed of the places you rated recently."
       >
-        <div className="restaurant-grid">
-          {(savedReviews.length ? savedReviews : reviewCards).map((review) => (
-            <ListCard
-              key={review.itemId || review.title}
-              icon={review.icon || AiOutlineStar}
-              title={review.itemName || review.title}
-              meta={review.restaurantName || review.meta}
-              description={review.description || (review.rating ? `Rated ${review.rating} star${review.rating>1?"s":""}` : "")}
-              badge={review.badge || (review.rating ? `${review.rating}★` : undefined)}
-              tone={review.tone || "mint"}
-            />
-          ))}
+        <div className="reviews-recent-grid">
+          {displayed.map((review) => {
+            const title = review.itemName || review.title;
+            const meta = review.restaurantName || review.meta;
+            const description =
+              review.description ||
+              (review.rating
+                ? `Rated ${review.rating} star${review.rating > 1 ? "s" : ""}`
+                : "");
+            const rating = getReviewStars(review) || review.rating;
+            const badge = review.badge || (rating ? `${rating}★` : undefined);
+            const tone = review.tone || "mint";
+
+            return (
+              <article key={review.itemId || review.title} className={`reviews-review-card tone-${tone}`.trim()}>
+                <div className="reviews-review-card__top">
+                  <div className="reviews-review-card__title-row">
+                    <div className="reviews-review-card__title">{title}</div>
+                    {badge ? <span className="reviews-review-card__badge">{badge}</span> : null}
+                  </div>
+                  <div className="reviews-review-card__meta">{meta}</div>
+                </div>
+
+                <div className="reviews-review-card__stars">
+                  <StarVisual rating={Number(rating || 0)} />
+                </div>
+
+                {description ? <p className="reviews-review-card__description">{description}</p> : null}
+
+                <div className="reviews-review-card__footer">
+                  <span className="reviews-review-card__footer-pill">Recent</span>
+                  <span className="reviews-review-card__footer-pill reviews-review-card__footer-pill--soft">Loved</span>
+                </div>
+
+                <div className="reviews-review-card__hover" aria-hidden="true" />
+              </article>
+            );
+          })}
         </div>
       </SectionShell>
     </div>
   );
 }
+
 
 function NotificationsSection({ onNavigate }) {
   return (
