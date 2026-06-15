@@ -14,17 +14,17 @@ const topNav = [
 
 // Sidebar navigation items for different sections
 const sidebarNav = [
-  { label: 'Dashboard', href: '/admin/dashboard' },
-  { label: 'Menu Management', href: '/restaurant/dashboard' },
-  { label: 'Orders', href: '/admin/orders' },
-  { label: 'Delivery', href: '/delivery/dashboard' },
-  { label: 'Customers', href: '/admin/customers' },
-  { label: 'Reviews', href: '/admin/reviews' },
-  { label: 'Reviews and Ratings', href: '/admin/reviews-ratings' },
-  { label: 'Analytics', href: '/admin/analytics' },
-  { label: 'Payout', href: '/admin/payout' },
-  { label: 'Reservations', href: '/restaurant/reservations' },
-  { label: 'Settings', href: '/admin/settings' },
+  { label: '', href: '/admin/dashboard' },
+  { label: ' ', href: '/restaurant/dashboard' },
+  { label: '', href: '/admin/orders' },
+  { label: '', href: '/delivery/dashboard' },
+  { label: '', href: '/admin/customers' },
+  { label: '', href: '/admin/reviews' },
+  { label: ' ', href: '/admin/reviews-ratings' },
+  { label: '', href: '/admin/analytics' },
+  { label: '', href: '/admin/payout' },
+  { label: '', href: '/restaurant/reservations' },
+  { label: '', href: '/admin/settings' },
 ];
 
 const features = [
