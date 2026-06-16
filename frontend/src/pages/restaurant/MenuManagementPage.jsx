@@ -141,7 +141,7 @@ function MenuManagementPage() {
           onClick={() => handleOpenModal()} 
           style={{ background: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}
         >
-          + Add New Item
+          ++ Add New Items
         </button>
       </header>
 

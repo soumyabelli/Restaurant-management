@@ -210,19 +210,19 @@ function RestaurantDashboard() {
           <div className="menu-counts">
             <div className="count-box total">
               <div className="num">{restaurant?.menu?.length || 0}</div>
-              <div className="txt">Total Items present</div>
+              <div className="txt">Total Items present in the restaurant</div>
             </div>
             <div className="count-box active">
               <div className="num">{restaurant?.menu?.filter(i => i.active !== false).length || 0}</div>
-              <div className="txt">Active Items</div>
+              <div className="txt">Active Items present</div>
             </div>
             <div className="count-box out">
               <div className="num">0</div>
-              <div className="txt">Out of Stock</div>
+              <div className="txt">Out of Stocks</div>
             </div>
             <div className="count-box inactive">
               <div className="num">{restaurant?.menu?.filter(i => i.active === false).length || 0}</div>
-              <div className="txt">Inactive Items</div>
+              <div className="txt">Inactive Items present</div>
             </div>
           </div>
 
