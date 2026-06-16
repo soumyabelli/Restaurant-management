@@ -8,8 +8,8 @@ import { useState } from 'react';
 
 const topNav = [
   { label: 'Home', icon: '🏠', href: '/' },
-  { label: 'Menu', icon: '📋', href: '/menu' },
-  { label: 'Contact', icon: '📞', href: '/contact' },
+  { label: 'Menus', icon: '📋', href: '/menu' },
+  { label: 'Contacts', icon: '📞', href: '/contact' },
 ];
 
 // Sidebar navigation items for different sections
@@ -22,7 +22,7 @@ const sidebarNav = [
   { label: '', href: '/admin/reviews' },
   { label: ' ', href: '/admin/reviews-ratings' },
   { label: '', href: '/admin/analytics' },
-  { label: '', href: '/admin/payout' },
+  { label: '', href: '/admin/payouts' },
   { label: '', href: '/restaurant/reservations' },
   { label: '', href: '/admin/settings' },
 ];
@@ -36,7 +36,7 @@ const features = [
   },
   {
     title: 'Easy Booking',
-    text: 'Reserve tables with ease.',
+    text: 'Reserve tables with ease and comfertable.',
     icon: '📅',
     color: 'blue',
   },
