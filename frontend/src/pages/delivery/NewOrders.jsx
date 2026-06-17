@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiClock, FiMapPin, FiRefreshCw, FiUsers } from "react-icons/fi";
 import toast from "react-hot-toast";
+
+import { socket } from "../../api/socket";
 import "../../styles/restaurant-dashboard.css";
 import { acceptDeliveryOrder, loadDeliveryList } from "./deliveryApi";
 import {
   formatMoney,
   formatShortDateTime,
   formatTimeAgo,
-  getCustomerName,
   getCustomerPhone,
   getOrderId,
   getOrderItemsLabel,
@@ -21,7 +22,7 @@ export default function NewOrders() {
   const [actionOrderId, setActionOrderId] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchOrders = async ({ silent = false } = {}) => {
+  const fetchOrders = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
       setLoading(true);
     }
@@ -35,31 +36,51 @@ export default function NewOrders() {
       if (!silent) {
         toast.error(error?.response?.data?.message || "Failed to load new orders");
       }
-      setOrders([]);
     } finally {
       if (!silent) {
         setLoading(false);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchOrders();
+    void fetchOrders();
 
-    const timer = setInterval(() => {
-      fetchOrders({ silent: true });
+    const handleSocketRefresh = () => {
+      void fetchOrders({ silent: true });
+    };
+
+    socket.connect();
+    socket.on("orderCreated", handleSocketRefresh);
+    socket.on("orderStatusUpdated", handleSocketRefresh);
+
+    const interval = setInterval(() => {
+      void fetchOrders({ silent: true });
     }, 12000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      socket.off("orderCreated", handleSocketRefresh);
+      socket.off("orderStatusUpdated", handleSocketRefresh);
+      socket.disconnect();
+      clearInterval(interval);
+    };
+  }, [fetchOrders]);
 
   const groupedOrders = useMemo(() => groupOrdersByCustomer(orders), [orders]);
 
   const summary = useMemo(() => {
-    const totalValue = orders.reduce((sum, order) => sum + Number(order?.total || order?.amount || 0), 0);
+    const totalValue = orders.reduce(
+      (sum, order) => sum + Number(order?.total || order?.amount || 0),
+      0
+    );
     const latestOrder = orders.reduce((latest, order) => {
-      if (!latest) return order;
-      return new Date(order?.createdAt || 0) > new Date(latest?.createdAt || 0) ? order : latest;
+      if (!latest) {
+        return order;
+      }
+
+      return new Date(order?.createdAt || 0) > new Date(latest?.createdAt || 0)
+        ? order
+        : latest;
     }, null);
 
     return {
@@ -70,20 +91,23 @@ export default function NewOrders() {
     };
   }, [groupedOrders.length, orders]);
 
-  const handleAccept = async (orderId) => {
-    setActionOrderId(orderId);
+  const handleAccept = useCallback(
+    async (orderId) => {
+      setActionOrderId(orderId);
 
-    try {
-      await acceptDeliveryOrder(orderId);
-      toast.success("Order accepted");
-      await fetchOrders({ silent: true });
-    } catch (error) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to accept order");
-    } finally {
-      setActionOrderId(null);
-    }
-  };
+      try {
+        await acceptDeliveryOrder(orderId);
+        toast.success("Order accepted");
+        await fetchOrders({ silent: true });
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.response?.data?.message || "Failed to accept order");
+      } finally {
+        setActionOrderId(null);
+      }
+    },
+    [fetchOrders]
+  );
 
   return (
     <div className="delivery-new-orders-page">
@@ -118,7 +142,9 @@ export default function NewOrders() {
           <button
             type="button"
             className="icon-btn"
-            onClick={() => fetchOrders()}
+            onClick={() => {
+              void fetchOrders();
+            }}
             aria-label="Refresh new orders"
             disabled={loading}
           >
@@ -170,7 +196,9 @@ export default function NewOrders() {
             <div className="metric-value">
               <h3>{formatMoney(summary.totalValue)}</h3>
               <div className="metric-change muted">
-                {summary.latestOrder ? `Latest: ${formatTimeAgo(summary.latestOrder.createdAt)}` : "Waiting for live orders"}
+                {summary.latestOrder
+                  ? `Latest: ${formatTimeAgo(summary.latestOrder.createdAt)}`
+                  : "Waiting for live orders"}
               </div>
             </div>
           </div>
@@ -198,6 +226,10 @@ export default function NewOrders() {
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {groupedOrders.map((group) => {
               const primaryOrder = group.orders[0];
+              const groupTotal = group.orders.reduce(
+                (sum, order) => sum + Number(order?.total || order?.amount || 0),
+                0
+              );
 
               return (
                 <div key={group.customerName} className="card" style={{ padding: "14px", borderRadius: "12px" }}>
@@ -213,12 +245,12 @@ export default function NewOrders() {
                     <div>
                       <strong style={{ display: "block", color: "#e2e8f0" }}>{group.customerName}</strong>
                       <span className="muted" style={{ fontSize: "13px" }}>
-                        {getCustomerPhone(primaryOrder)} • {group.orders.length} order
+                        {getCustomerPhone(primaryOrder)} | {group.orders.length} order
                         {group.orders.length > 1 ? "s" : ""} waiting
                       </span>
                     </div>
                     <div className="badge" style={{ background: "rgba(59, 130, 246, 0.12)", color: "#bfdbfe" }}>
-                      {formatMoney(group.orders.reduce((sum, order) => sum + Number(order?.total || 0), 0))}
+                      {formatMoney(groupTotal)}
                     </div>
                   </div>
 
@@ -235,7 +267,7 @@ export default function NewOrders() {
                               {getRestaurantName(order)}
                             </div>
                             <div className="order-items">
-                              {itemsLabel} • {getCustomerPhone(order)}
+                              {itemsLabel} | {getCustomerPhone(order)}
                             </div>
                             <div className="order-meta">
                               <span style={{ marginRight: "10px" }}>{order.address || "No delivery address"}</span>
@@ -268,7 +300,9 @@ export default function NewOrders() {
                               <button
                                 type="button"
                                 className="accept-btn"
-                                onClick={() => handleAccept(orderId)}
+                                onClick={() => {
+                                  void handleAccept(orderId);
+                                }}
                                 disabled={actionOrderId === orderId}
                               >
                                 {actionOrderId === orderId ? "Accepting..." : "Accept"}

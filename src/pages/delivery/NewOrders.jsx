@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
 import toast from "react-hot-toast";
 import { FiRefreshCw, FiMapPin, FiClock } from "react-icons/fi";
+import { socket } from "../../api/socket";
 import "../../styles/restaurant-dashboard.css";
 
 const fmtMoney = (v) => `₹${Number(v || 0).toFixed(0)}`;
@@ -13,6 +14,13 @@ export default function NewOrders() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
+
+  const totalOrdersCount = available.length;
+  const totalOrdersSum = available.reduce((acc, order) => acc + (order.total || order.amount || 0), 0);
+  const totalEarningsSum = available.reduce((acc, order) => {
+    const subtotal = order.total || order.amount || 0;
+    return acc + 40 + Math.round(subtotal * 0.15);
+  }, 0);
 
   const fetchAvailable = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -31,9 +39,26 @@ export default function NewOrders() {
 
   useEffect(() => {
     fetchAvailable();
+
+    // Connect socket and listen to events in real-time
+    socket.connect();
+    
+    const handleSocketEvent = () => {
+      fetchAvailable(true);
+    };
+
+    socket.on("orderCreated", handleSocketEvent);
+    socket.on("orderStatusUpdated", handleSocketEvent);
+
     // Poll for new orders every 10 seconds
     const interval = setInterval(() => fetchAvailable(true), 10000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      socket.off("orderCreated", handleSocketEvent);
+      socket.off("orderStatusUpdated", handleSocketEvent);
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleAccept = async (orderId) => {
@@ -96,6 +121,22 @@ export default function NewOrders() {
         </div>
       </header>
 
+      {/* Summary Stats Bar */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "20px" }}>
+        <div style={{ padding: "14px 18px", background: "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <span style={{ fontSize: "12px", color: "rgba(230,238,247,0.45)", fontWeight: "600" }}>Incoming Orders</span>
+          <h3 style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "22px", fontWeight: "800" }}>{totalOrdersCount}</h3>
+        </div>
+        <div style={{ padding: "14px 18px", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.02))", border: "1px solid rgba(99, 102, 241, 0.15)", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <span style={{ fontSize: "12px", color: "rgba(230,238,247,0.45)", fontWeight: "600" }}>Total Sum of Orders</span>
+          <h3 style={{ margin: "4px 0 0 0", color: "#a5b4fc", fontSize: "22px", fontWeight: "800" }}>{fmtMoney(totalOrdersSum)}</h3>
+        </div>
+        <div style={{ padding: "14px 18px", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02))", border: "1px solid rgba(16, 185, 129, 0.15)", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <span style={{ fontSize: "12px", color: "rgba(230,238,247,0.45)", fontWeight: "600" }}>Est. Total Payouts</span>
+          <h3 style={{ margin: "4px 0 0 0", color: "#10b981", fontSize: "22px", fontWeight: "800" }}>{fmtMoney(totalEarningsSum)}</h3>
+        </div>
+      </div>
+
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           {[1, 2].map((idx) => (
@@ -136,10 +177,29 @@ export default function NewOrders() {
                     <span style={{ fontWeight: 800, fontSize: "16px", background: "rgba(99, 102, 241, 0.1)", padding: "4px 8px", borderRadius: "6px", color: "#818cf8" }}>
                       {order.orderCode || `#${id.slice(-6).toUpperCase()}`}
                     </span>
-                    <span className="badge" style={{ background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.2)", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-                      Ready for Pickup
-                    </span>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span className="badge" style={{ background: "rgba(255, 255, 255, 0.05)", color: "#a5b4fc", fontSize: "12px", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                        {items.reduce((sum, item) => sum + (item.quantity || 1), 0)} Items
+                      </span>
+                      <span className="badge" style={{ 
+                        background: order.status === "Ready" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)", 
+                        color: order.status === "Ready" ? "#10b981" : "#f59e0b", 
+                        border: order.status === "Ready" ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid rgba(245, 158, 11, 0.2)", 
+                        fontSize: "12px", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "4px" 
+                      }}>
+                        <span style={{ 
+                          width: "6px", 
+                          height: "6px", 
+                          borderRadius: "50%", 
+                          background: order.status === "Ready" ? "#10b981" : "#f59e0b", 
+                          display: "inline-block" 
+                        }} />
+                        {order.status === "Ready" ? "Ready for Pickup" : order.status}
+                      </span>
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -177,9 +237,15 @@ export default function NewOrders() {
                 </div>
 
                 <div style={{ marginTop: "20px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: "12px", color: "rgba(230,238,247,0.4)", display: "block" }}>Est. Earnings</span>
-                    <strong style={{ fontSize: "22px", color: "#10b981" }}>{fmtMoney(payout)}</strong>
+                  <div style={{ display: "flex", gap: "20px" }}>
+                    <div>
+                      <span style={{ fontSize: "11px", color: "rgba(230,238,247,0.4)", display: "block" }}>Order Value</span>
+                      <strong style={{ fontSize: "20px", color: "#e6eef7" }}>{fmtMoney(subtotal)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "11px", color: "rgba(230,238,247,0.4)", display: "block" }}>Est. Earnings</span>
+                      <strong style={{ fontSize: "20px", color: "#10b981" }}>{fmtMoney(payout)}</strong>
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", gap: "8px" }}>

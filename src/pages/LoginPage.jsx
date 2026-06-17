@@ -9,16 +9,19 @@ const featureList = [
     icon: '🚀',
     title: 'Fast Delivery',
     text: 'Real-time tracking & speedy deliveries',
+    role: 'delivery',
   },
   {
     icon: '🍽️',
     title: 'Table Reservations',
     text: 'Book your perfect table in seconds',
+    role: 'customer',
   },
   {
     icon: '🎟️',
     title: 'Events & Experiences',
     text: 'Discover and book amazing events',
+    role: 'restaurant',
   },
 ]
 
@@ -28,66 +31,6 @@ const roles = [
   { id: 'delivery', label: 'Delivery', icon: '🚚' },
 ]
 
-const roleContent = {
-  customer: {
-    title: 'Food, Moments, Delivered.',
-    description: 'Your all-in-one platform for food delivery, table reservations, and exciting events near you.',
-    bg: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
-    bgImage: food2Image,
-    features: [
-      { icon: '🚀', title: 'Fast Delivery', text: 'Real-time tracking & speedy deliveries' },
-      { icon: '🍽️', title: 'Table Reservations', text: 'Book your perfect table in seconds' },
-      { icon: '🎟️', title: 'Events & Experiences', text: 'Discover and book amazing events' },
-    ],
-    welcomeTitle: 'Welcome Back, Customer!',
-    welcomeSub: 'Login to continue your delicious journey',
-    labelEmail: 'Email or Phone Number',
-    placeholderEmail: 'Enter your email or phone number',
-    signupLabel: "Don't have an account? Sign Up",
-    signupLink: '/register',
-    autofillLabel: 'Autofill Customer Acc',
-    autofillEmail: 'customer@gmail.com'
-  },
-  restaurant: {
-    title: 'Scale Your Restaurant Business.',
-    description: 'Manage incoming orders, configure food menus, track daily statistics, and read reviews.',
-    bg: 'linear-gradient(135deg, rgba(8, 17, 39, 0.95) 0%, rgba(10, 160, 111, 0.95) 100%)',
-    bgImage: '/src/assets/rest6.jfif',
-    features: [
-      { icon: '📊', title: 'Merchant Analytics', text: 'View revenue trends and dashboard stats' },
-      { icon: '📜', title: 'Menu Manager', text: 'Instantly add, remove or edit food items' },
-      { icon: '💬', title: 'Customer Feedback', text: 'Respond directly to reviews and ratings' },
-    ],
-    welcomeTitle: 'Partner Dashboard Login',
-    welcomeSub: 'Access your kitchen orders and store management',
-    labelEmail: 'Merchant Email Address',
-    placeholderEmail: 'merchant@restaurant.com',
-    signupLabel: "Partner with DineX? Register Restaurant",
-    signupLink: '#',
-    autofillLabel: 'Autofill Merchant Acc',
-    autofillEmail: 'rest1@gmail.com'
-  },
-  delivery: {
-    title: 'Deliver Fast Food. Ride & Earn.',
-    description: 'Deliver orders, navigate efficiently with live GPS routing, and manage your credit earnings wallet.',
-    bg: 'linear-gradient(135deg, rgba(11, 18, 36, 0.95) 0%, rgba(245, 158, 11, 0.95) 100%)',
-    bgImage: '/src/assets/rest6.jfif',
-    features: [
-      { icon: '🛵', title: 'Fast Food Delivery', text: 'Accept nearby ready orders immediately' },
-      { icon: '🗺️', title: 'GPS Route Tracker', text: 'Smooth coordinate Bezier curve routing' },
-      { icon: '👛', title: 'Rider Wallet', text: 'Cash out your balance to bank accounts instantly' },
-    ],
-    welcomeTitle: 'Rider Portal Login',
-    welcomeSub: 'Go online, accept orders, and track your wallet payout',
-    labelEmail: 'Rider Mobile / Email',
-    placeholderEmail: 'rider@delivery.com',
-    signupLabel: "Become a rider partner? Apply Here",
-    signupLink: '#',
-    autofillLabel: 'Autofill Rider Acc',
-    autofillEmail: 'delivery@gmail.com'
-  }
-};
-
 function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -95,19 +38,7 @@ function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [selectedRole, setSelectedRole] = useState('customer')
-  const [activeContent, setActiveContent] = useState(roleContent.customer)
-  const [fade, setFade] = useState(true)
   const [loading, setLoading] = useState(false)
-
-  const handleRoleChange = (role) => {
-    if (role === selectedRole) return;
-    setFade(false);
-    setTimeout(() => {
-      setSelectedRole(role);
-      setActiveContent(roleContent[role]);
-      setFade(true);
-    }, 200);
-  };
 
   const handleLogin = async () => {
     try {
@@ -186,45 +117,28 @@ function LoginPage() {
   const background = location?.state?.backgroundImage || food2Image
 
   return (
-    <main 
-      className="login-page" 
-      style={{ 
-        backgroundImage: `url(${activeContent.bgImage})`, 
-        transition: 'background-image 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-        position: 'relative'
-      }}
-    >
-      <div 
-        style={{ 
-          position: 'absolute', 
-          inset: 0, 
-          background: activeContent.bg, 
-          opacity: 0.85, 
-          transition: 'background 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          pointerEvents: 'none'
-        }} 
-      />
+    <main className="login-page" style={{ backgroundImage: `url(${background})` }}>
       <section className="login-shell">
         {/* LEFT SIDE */}
-        <aside 
-          className="promo-panel"
-          style={{ 
-            opacity: fade ? 1 : 0, 
-            transform: fade ? 'translateX(0)' : 'translateX(-12px)',
-            transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-            zIndex: 2
-          }}
-        >
+        <aside className="promo-panel">
           <div className="promo-overlay">
             <h2 className="promo-brand">DineX</h2>
 
-            <h1>{activeContent.title}</h1>
+            <h1>Food, Moments, Delivered.</h1>
 
-            <p>{activeContent.description}</p>
+            <p>
+              Your all-in-one platform for food delivery,
+              table reservations, and exciting events near
+              you.
+            </p>
 
             <div className="promo-features">
-              {activeContent.features.map((item) => (
-                <article className="promo-item" key={item.title}>
+              {featureList.map((item) => (
+                <article
+                  className={`promo-item ${selectedRole === item.role ? 'active-feature' : ''}`}
+                  key={item.title}
+                  onClick={() => setSelectedRole(item.role)}
+                >
                   <span>{item.icon}</span>
 
                   <div>
@@ -238,21 +152,14 @@ function LoginPage() {
         </aside>
 
         {/* RIGHT SIDE */}
-        <section className="form-panel" style={{ zIndex: 2 }}>
+        <section className="form-panel">
           <div className="form-head">
             <button type="button" className="lang-btn">
               English ▼
             </button>
           </div>
 
-          <div 
-            className="form-body"
-            style={{ 
-              opacity: fade ? 1 : 0, 
-              transform: fade ? 'translateY(0)' : 'translateY(8px)',
-              transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
+          <div className="form-body">
 
             {/* ROLE SELECTOR */}
             <div className="role-selector">
@@ -264,12 +171,7 @@ function LoginPage() {
                     key={role.id}
                     type="button"
                     className={`role-card ${selectedRole === role.id ? 'active' : ''}`}
-                    onClick={() => handleRoleChange(role.id)}
-                    style={{
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      transform: selectedRole === role.id ? 'scale(1.05)' : 'scale(1)',
-                      boxShadow: selectedRole === role.id ? '0 10px 20px rgba(0,0,0,0.15)' : 'none'
-                    }}
+                    onClick={() => setSelectedRole(role.id)}
                   >
                     <span className="role-icon">{role.icon}</span>
                     <p>{role.label}</p>
@@ -278,79 +180,63 @@ function LoginPage() {
               </div>
             </div>
 
-            <h2>
-              {activeContent.welcomeTitle}
-            </h2>
+            <div key={selectedRole} className="animate-fade-in">
+              <h2>
+                Welcome Back,{' '}
+                {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}!
+              </h2>
 
-            <p>{activeContent.welcomeSub}</p>
+              <p>Login to continue your delicious journey</p>
 
-            <label htmlFor="email">{activeContent.labelEmail}</label>
+              <label htmlFor="email">Email or Phone Number</label>
 
-            <input
-              id="email"
-              type="text"
-              placeholder={activeContent.placeholderEmail}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{ transition: 'all 0.3s ease' }}
-            />
+              <input
+                id="email"
+                type="text"
+                placeholder="Enter your email or phone number"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-            <label htmlFor="password">Password</label>
+              <label htmlFor="password">Password</label>
 
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ transition: 'all 0.3s ease' }}
-            />
+              <input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-            <div className="remember-row">
-              <label className="check-wrap">
-                <input type="checkbox" /> Remember me
-              </label>
+              <div className="remember-row">
+                <label className="check-wrap">
+                  <input type="checkbox" /> Remember me
+                </label>
 
-              <Link to="/forgot-password">Forgot Password?</Link>
-            </div>
-
-            <button type="button" className="login-btn" onClick={handleLogin}>
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-
-            <p className="signup-line">
-              {activeContent.signupLabel.split('?')[0]}? <Link to={activeContent.signupLink}>{activeContent.signupLabel.split('?')[1] || 'Sign Up'}</Link>
-            </p>
-
-            <div className="admin-login" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', marginTop: '24px' }}>
-              <div style={{ fontSize: '13px' }}>
-                <span style={{ color: '#6b7280' }}>Quick Test:</span>
-                <button
-                  type="button"
-                  style={{ marginLeft: '6px', fontWeight: '700', color: '#ff6b35', background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setEmail(activeContent.autofillEmail);
-                    setPassword('123');
-                  }}
-                >
-                  {activeContent.autofillLabel}
-                </button>
+                <Link to="/forgot-password">Forgot Password?</Link>
               </div>
-              <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-                Admin Portal?{' '}
-                <button
-                  type="button"
-                  style={{ color: '#9ca3af', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
+
+              <button type="button" className="login-btn" onClick={handleLogin}>
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+
+              <p className="signup-line">
+                Don&apos;t have an account? <Link to="/register">Sign Up</Link>
+              </p>
+
+              <div className="admin-login">
+                <span>Administrator?</span>
+
+                <Link
+                  to="#"
                   onClick={(e) => {
-                    e.preventDefault();
-                    setEmail('admin@gmail.com');
-                    setPassword('123');
-                    handleRoleChange('customer');
+                    e.preventDefault()
+                    setEmail('admin@gmail.com')
+                    setPassword('123')
                   }}
                 >
                   Admin Login
-                </button>
+                </Link>
               </div>
             </div>
           </div>
