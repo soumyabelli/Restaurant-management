@@ -55,7 +55,7 @@ function RestaurantDashboard() {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: "40px", textAlign: "center" }}>Loading dashboard...</div>;
+    return <div style={{ padding: "40px", textAlign: "center" }}>Loading dashboard.......</div>;
   }
 
   if (error) {
@@ -148,20 +148,20 @@ function RestaurantDashboard() {
             <div className="metric-icon">⏱️</div>
             <div className="metric-value"> 
               <h3>{stats.prepTime}</h3>
-              <div className="metric-change negative">▼ 2 mins <small> yesterday</small></div>
+              <div className="metric-change negative">▼ 1 mins <small> yesterday</small></div>
             </div>
           </div>
-          <p className="label">Average Prep Time</p>
+          <p className="label">Average Preparation  Time</p>
         </div>
         <div className="stat"> 
           <div className="stat-top">
             <div className="metric-icon">⭐</div>
             <div className="metric-value"> 
               <h3>{stats.totalRatings}</h3>
-              <div className="metric-change positive">▲ 0.2 <small>vs last 7 days</small></div>
+              <div className="metric-change positive">▲ 0.3 <small>vs last 7 days</small></div>
             </div>
           </div>
-          <p className="label">Total Ratings</p>
+          <p className="label">Total Rating</p>
         </div>
       </section>
 
@@ -172,7 +172,7 @@ function RestaurantDashboard() {
             <div className="tabs">
               <button className="tab active">New <span className="tab-count">{ordersByStatus?.new || 0}</span></button>
               <button className="tab">Preparing <span className="tab-count">{ordersByStatus.preparing || 0}</span></button>
-              <button className="tab">Ready <span className="tab-count">{ordersByStatus.ready || 0}</span></button>
+              <button className="tab">Ready to searve<span className="tab-count">{ordersByStatus.ready || 0}</span></button>
               <button className="tab">Out for Delivery <span className="tab-count">{ordersByStatus.delivery || 0}</span></button>
             </div>
           </div>
@@ -210,19 +210,19 @@ function RestaurantDashboard() {
           <div className="menu-counts">
             <div className="count-box total">
               <div className="num">{restaurant?.menu?.length || 0}</div>
-              <div className="txt">Total Items</div>
+              <div className="txt">Total Items present in the restaurant</div>
             </div>
             <div className="count-box active">
               <div className="num">{restaurant?.menu?.filter(i => i.active !== false).length || 0}</div>
-              <div className="txt">Active Items</div>
+              <div className="txt">Active Items present</div>
             </div>
             <div className="count-box out">
               <div className="num">0</div>
-              <div className="txt">Out of Stock</div>
+              <div className="txt">Out of Stocks</div>
             </div>
             <div className="count-box inactive">
               <div className="num">{restaurant?.menu?.filter(i => i.active === false).length || 0}</div>
-              <div className="txt">Inactive Items</div>
+              <div className="txt">Inactive Items present</div>
             </div>
           </div>
 

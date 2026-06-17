@@ -8,23 +8,23 @@ import { useState } from 'react';
 
 const topNav = [
   { label: 'Home', icon: '🏠', href: '/' },
-  { label: 'Menu', icon: '📋', href: '/menu' },
-  { label: 'Contact', icon: '📞', href: '/contact' },
+  { label: 'Menus', icon: '📋', href: '/menu' },
+  { label: 'Contacts', icon: '📞', href: '/contact' },
 ];
 
 // Sidebar navigation items for different sections
 const sidebarNav = [
-  { label: 'Dashboard', href: '/admin/dashboard' },
-  { label: 'Menu Management', href: '/restaurant/dashboard' },
-  { label: 'Orders', href: '/admin/orders' },
-  { label: 'Delivery', href: '/delivery/dashboard' },
-  { label: 'Customers', href: '/admin/customers' },
-  { label: 'Reviews', href: '/admin/reviews' },
-  { label: 'Reviews and Ratings', href: '/admin/reviews-ratings' },
-  { label: 'Analytics', href: '/admin/analytics' },
-  { label: 'Payout', href: '/admin/payout' },
-  { label: 'Reservations', href: '/restaurant/reservations' },
-  { label: 'Settings', href: '/admin/settings' },
+  { label: '', href: '/admin/dashboard' },
+  { label: ' ', href: '/restaurant/dashboard' },
+  { label: '', href: '/admin/orders' },
+  { label: '', href: '/delivery/dashboard' },
+  { label: '', href: '/admin/customers' },
+  { label: '', href: '/admin/reviews' },
+  { label: ' ', href: '/admin/reviews-ratings' },
+  { label: '', href: '/admin/analytics' },
+  { label: '', href: '/admin/payouts' },
+  { label: '', href: '/restaurant/reservations' },
+  { label: '', href: '/admin/settings' },
 ];
 
 const features = [
@@ -36,7 +36,7 @@ const features = [
   },
   {
     title: 'Easy Booking',
-    text: 'Reserve tables with ease.',
+    text: 'Reserve tables with ease and comfertable.',
     icon: '📅',
     color: 'blue',
   },
