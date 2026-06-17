@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 
 import Event from "../models/Event.js";
 import EventBooking from "../models/EventBooking.js";
@@ -20,6 +21,41 @@ const INR = new Intl.NumberFormat("en-IN", {
 });
 
 const formatMoney = (value = 0) => INR.format(Number(value || 0));
+
+const normalizeStringList = (value) => {
+  const values = Array.isArray(value) ? value : value != null ? [value] : [];
+
+  return values
+    .map((entry) => String(entry ?? "").trim())
+    .filter(Boolean);
+};
+
+const resolveRestaurantDocument = async (identifier) => {
+  const raw = String(identifier ?? "").trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  const slugCandidates = [
+    raw === "demo" ? "green-bowl-cafe" : null,
+    raw.startsWith("demo-") ? raw.slice(5) : null,
+    raw,
+  ].filter(Boolean);
+
+  for (const slug of slugCandidates) {
+    const restaurant = await Restaurant.findOne({ slug });
+    if (restaurant) {
+      return restaurant;
+    }
+  }
+
+  if (mongoose.Types.ObjectId.isValid(raw)) {
+    return Restaurant.findById(raw);
+  }
+
+  return null;
+};
 
 const formatShortDate = (value) => {
   const date = new Date(value);
@@ -133,16 +169,16 @@ const mapRestaurant = (restaurant) => ({
   emoji: restaurant.emoji,
   imageKey: restaurant.imageKey,
   imagePosition: restaurant.imagePosition,
-  cuisine: restaurant.cuisine.join(", "),
-  rating: restaurant.rating.toFixed(1),
+  cuisine: normalizeStringList(restaurant.cuisine).join(", "),
+  rating: Number(restaurant.rating || 0).toFixed(1),
   eta: restaurant.eta,
   time: restaurant.eta,
   distance: restaurant.distance,
   priceRange: restaurant.priceRange,
   location: restaurant.location,
-  tags: restaurant.tags,
-  tableOptions: restaurant.tableOptions,
-  menu: restaurant.menu.map((item) => ({
+  tags: normalizeStringList(restaurant.tags),
+  tableOptions: normalizeStringList(restaurant.tableOptions),
+  menu: (restaurant.menu || []).map((item) => ({
     id: item._id.toString(),
     name: item.name,
     price: item.price,
@@ -180,11 +216,11 @@ const mapFavorite = (favorite) => ({
   restaurant: favorite.restaurantName,
   emoji: favorite.restaurantEmoji || "🍽️",
   imageKey: favorite.restaurantImageKey || "food",
-  cuisine: favorite.cuisine.join(", "),
-  rating: favorite.rating.toFixed(1),
+  cuisine: normalizeStringList(favorite.cuisine).join(", "),
+  rating: Number(favorite.rating || 0).toFixed(1),
   eta: favorite.eta,
   distance: favorite.distance,
-  tags: favorite.tags,
+  tags: normalizeStringList(favorite.tags),
   actionLabel: "Order again",
   tone: "mint",
 });
@@ -813,7 +849,7 @@ export const getRestaurantById = async (req, res) => {
   try {
     await ensureBaseCatalog();
 
-    const restaurant = await Restaurant.findById(req.params.id);
+    const restaurant = await resolveRestaurantDocument(req.params.id);
 
     if (!restaurant) {
       return res.status(404).json({
@@ -884,7 +920,7 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    const restaurant = await Restaurant.findById(restaurantId);
+    const restaurant = await resolveRestaurantDocument(restaurantId);
 
     if (!restaurant) {
       return res.status(404).json({
@@ -1033,7 +1069,7 @@ export const createReservation = async (req, res) => {
       });
     }
 
-    const restaurant = await Restaurant.findById(restaurantId);
+    const restaurant = await resolveRestaurantDocument(restaurantId);
 
     if (!restaurant) {
       return res.status(404).json({
@@ -1207,7 +1243,7 @@ export const toggleFavorite = async (req, res) => {
       });
     }
 
-    const restaurant = await Restaurant.findById(restaurantId);
+    const restaurant = await resolveRestaurantDocument(restaurantId);
 
     if (!restaurant) {
       return res.status(404).json({

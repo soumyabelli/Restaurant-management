@@ -906,6 +906,9 @@ function RestaurantCard({
   primaryActionLabel = "View menu",
 }) {
   const imageSource = resolveMedia(restaurant.image || restaurant.imageKey);
+  const tags = Array.isArray(restaurant.tags)
+    ? restaurant.tags.map((tag) => String(tag ?? "").trim()).filter(Boolean)
+    : [];
 
   return (
     <article className="restaurant-card" role="button" tabIndex={0} onClick={() => onSelect?.(restaurant)} onKeyDown={(event) => {
@@ -953,8 +956,8 @@ function RestaurantCard({
           </span>
         </div>
         <div className="tag-row">
-          {restaurant.tags.map((tag) => (
-            <span key={tag} className="pill">
+          {tags.map((tag, index) => (
+            <span key={`${tag}-${index}`} className="pill">
               {tag}
             </span>
           ))}

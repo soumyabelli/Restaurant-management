@@ -340,11 +340,11 @@ export default function RestaurantMenuPage() {
       ) : restaurant?.menu?.length ? (
         <div className="content menu-layout">
           <div className="menu-items">
-            {restaurant.menu.map((item) => {
+            {restaurant.menu.map((item, index) => {
               const qty = Number(cart?.items?.[String(item.id)] || 0);
               return (
                 <MenuItemRow
-                  key={item.id}
+                  key={String(item.id || item._id || index)}
                   item={item}
                   qty={qty}
                   onAdd={() => onAdd(item)}
@@ -385,8 +385,8 @@ export default function RestaurantMenuPage() {
 
             <div className="selected-list">
               {selectedItems.length ? (
-                selectedItems.map((item) => (
-                  <div key={item.id} className="selected-list__row">
+                selectedItems.map((item, index) => (
+                  <div key={String(item.id || item._id || index)} className="selected-list__row">
                     <span>
                       {item.name} x {item.qty}
                     </span>
