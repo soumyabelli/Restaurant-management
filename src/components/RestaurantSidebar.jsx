@@ -1,5 +1,8 @@
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AiOutlineMenu, AiOutlineHome, AiOutlineShop, AiOutlineSetting, AiOutlineBell } from "react-icons/ai";
+import { socket } from "../api/socket";
+import api from "../api/client";
 import rest1 from "../assets/rest1.jfif";
 
 function RestaurantSidebar({ name, status = "Open" }) {
@@ -12,11 +15,51 @@ function RestaurantSidebar({ name, status = "Open" }) {
   
   const displayName = name || user?.name || 'The Coastal Kitchen';
 
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    socket.connect();
+
+    const fetchCounts = async () => {
+      try {
+        if (user.role === "delivery") {
+          const res = await api.get("/delivery/available");
+          const data = Array.isArray(res.data) ? res.data : res.data?.value || [];
+          setNewOrdersCount(data.length);
+        } else if (user.role === "restaurant") {
+          const res = await api.get("/restaurant/orders");
+          const data = res.data?.success ? res.data.data : [];
+          const active = data.filter(o => o.status !== "Delivered" && o.status !== "Cancelled");
+          setActiveOrdersCount(active.length);
+        }
+      } catch (err) {
+        console.error("Failed to fetch sidebar counts:", err);
+      }
+    };
+
+    fetchCounts();
+
+    const handleUpdate = () => {
+      fetchCounts();
+    };
+
+    socket.on("orderCreated", handleUpdate);
+    socket.on("orderStatusUpdated", handleUpdate);
+
+    return () => {
+      socket.off("orderCreated", handleUpdate);
+      socket.off("orderStatusUpdated", handleUpdate);
+    };
+  }, [user?.role]);
+
   const menuItems = [
     // default restaurant menu (used when not in /delivery)
     { name: "Dashboard", path: "/restaurant/dashboard", icon: <AiOutlineHome /> },
     { name: "Menu Management", path: "/restaurant/menu-management", icon: <AiOutlineShop /> },
-    { name: "Total Orders", path: "/restaurant/orders", icon: <AiOutlineBell /> },
+    { name: "Total Orders", path: "/restaurant/orders", icon: <AiOutlineBell />, badgeCount: activeOrdersCount },
     { name: "Delivery", path: "/restaurant/delivery", icon: <AiOutlineBell /> },
     { name: "Total Customers", path: "/restaurant/customers", icon: <AiOutlineBell /> },
     { name: "Reviews", path: "/restaurant/reviews", icon: <AiOutlineBell /> },
@@ -29,7 +72,7 @@ function RestaurantSidebar({ name, status = "Open" }) {
 
   const deliveryMenu = [
     { name: "Dashboard", path: "/delivery/dashboard", icon: <AiOutlineHome /> },
-    { name: "New Orders", path: "/delivery/new-orders", icon: <AiOutlineBell />, badgeCount: 2 },
+    { name: "New Orders", path: "/delivery/new-orders", icon: <AiOutlineBell />, badgeCount: newOrdersCount },
     { name: "My Deliveries", path: "/delivery/my-deliveries", icon: <AiOutlineShop /> },
     { name: "Earnings", path: "/delivery/earnings", icon: <AiOutlineBell /> },
     { name: "Wallet", path: "/delivery/wallet", icon: <AiOutlineBell /> },

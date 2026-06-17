@@ -3,6 +3,7 @@ import api from "../../api/client";
 import toast from "react-hot-toast";
 import { FiRefreshCw, FiMapPin } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
+import { socket } from "../../api/socket";
 import "../../styles/restaurant-dashboard.css";
 
 function fmtMoney(v) {
@@ -160,8 +161,23 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     fetchLists();
+    
+    socket.connect();
+    
+    const handleUpdate = () => {
+      fetchLists();
+    };
+
+    socket.on("orderCreated", handleUpdate);
+    socket.on("orderStatusUpdated", handleUpdate);
+
     const t = setInterval(fetchLists, 12000);
-    return () => clearInterval(t);
+
+    return () => {
+      socket.off("orderCreated", handleUpdate);
+      socket.off("orderStatusUpdated", handleUpdate);
+      clearInterval(t);
+    };
   }, []);
   const acceptOrder = async (orderId) => {
     try {
