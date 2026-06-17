@@ -87,13 +87,13 @@ export default function RestaurantReservationPage() {
           ← Back
         </button>
         <div>
-          <h1>{restaurant?.name || "Table Reservation"}</h1>
+          <h1>{restaurant?.name || "Table Reservations"}</h1>
           <p>{restaurant?.cuisine || "Select your table, date and time"}</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="reserve-card">Loading restaurant details...</div>
+        <div className="reserve-card">Loading the restaurant details...</div>
       ) : (
         <div className="reserve-layout">
           <section className="reserve-card">
@@ -110,7 +110,7 @@ export default function RestaurantReservationPage() {
                   }}
                 >
                   <strong>{option}</strong>
-                  <span>Reserved seating</span>
+                  <span>Reserved seating Arrangement</span>
                 </button>
               ))}
             </div>

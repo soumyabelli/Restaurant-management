@@ -7,7 +7,7 @@ function SettingsPage() {
         </div>
       </header>
       <div className="card">
-        <p>Restaurant settings and configuration will be available here.</p>
+        <p>Restaurant settings and configuration will be available here please check it.</p>
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ function RegisterPage() {
         }
       );
 
-      alert("Registration successful! Please login.");
+      alert("Registration successful! Please login You  will be redirected to the login page .");
       navigate("/");
     } catch (error) {
       alert(
@@ -62,10 +62,10 @@ function RegisterPage() {
 
         <h1>DineX</h1>
 
-        <h2>Create Your Account</h2>
+        <h2>Create Your Account Please</h2>
 
         <p className="register-subtitle">
-          Join DineX and start ordering food,
+          Join DineX and start ordering food Now,
           booking tables, and discovering events.
         </p>
 
@@ -83,7 +83,7 @@ function RegisterPage() {
           <input
             type="email"
             name="email"
-            placeholder="Email Address"
+            placeholder="Enter Email Address"
             value={formData.email}
             onChange={handleChange}
             required
@@ -92,7 +92,7 @@ function RegisterPage() {
           <input
             type="text"
             name="phone"
-            placeholder="Phone Number"
+            placeholder="Enter Phone Number"
             value={formData.phone}
             onChange={handleChange}
             required
@@ -101,7 +101,7 @@ function RegisterPage() {
           <input
             type="password"
             name="password"
-            placeholder="Password"
+            placeholder="Enter Password"
             value={formData.password}
             onChange={handleChange}
             required
@@ -123,7 +123,7 @@ function RegisterPage() {
         </form>
 
         <div className="register-footer">
-          Already have an account?
+          Already have an account??
           <Link to="/login"> Login</Link>
         </div>
 
